@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!--
+  Webinar-OS · קריאייטיב 1080x1080 (תבנית אחת לכל 5 הקריאייטיבים)
+  ─────────────────────────────────────────────────────────────
+  איך משתמשים:
+  1. scripts/render_pages.py מייצר מהקובץ הזה 5 קבצים ב-out/creatives/
+     (tomorrow / tomorrow_time / today / one_hour / live) עם הטקסטים מ-copy.json.
+  2. פותחים קובץ בדפדפן (כרום), ומצלמים:
+     · הכי קל: תוסף "GoFullPage" או "Awesome Screenshot", או כלי הפיתוח:
+       F12 → Ctrl/Cmd+Shift+P → "Capture full size screenshot".
+     · או מבקשים מ-Claude Code: "צלם את out/creatives/*.html ל-PNG" (Playwright).
+  3. גרסת 9:16 לסטורי: מוסיפים ?story לכתובת (למשל tomorrow.html?story).
+
+  מיתוג: אותם משתני :root כמו בדפים. תמונה: {{creative_photo}} (רשות).
+-->
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1080">
+<title>{{punch}} · {{project_name}}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family={{brand.google_font_query}}&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: {{brand.bg}};
+  --text: {{brand.text}};
+  --muted: {{brand.muted}};
+  --accent: {{brand.accent}};
+  --accent-2: {{brand.accent_2}};
+  --on-accent: {{brand.on_accent}};
+  --accent-rgb: {{brand.accent_rgb}};
+  --font: '{{brand.font}}', system-ui, -apple-system, 'Segoe UI', Arial, 'Noto Sans Hebrew', sans-serif;
+  --w: 1080px; --h: 1080px;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { background: #000; }
+body { font-family: var(--font); color: var(--text); width: var(--w); height: var(--h); overflow: hidden; }
+.card { position: relative; width: var(--w); height: var(--h); background: var(--bg); overflow: hidden; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 90px; }
+.glow { position: absolute; left: 50%; top: 66%; transform: translate(-50%,-50%); width: 1400px; height: 900px; background: radial-gradient(ellipse at 50% 50%, rgba(var(--accent-rgb),.36) 0%, rgba(var(--accent-rgb),.14) 30%, transparent 62%); filter: blur(8px); }
+.grid { position: absolute; left: 50%; top: 66%; transform: translateX(-50%) perspective(360px) rotateX(62deg); transform-origin: 50% 0%; width: 300%; height: 60%;
+  background-image: repeating-linear-gradient(90deg, transparent 0, transparent 67px, rgba(var(--accent-rgb),.3) 67px, rgba(var(--accent-rgb),.3) 69px), repeating-linear-gradient(0deg, transparent 0, transparent 67px, rgba(var(--accent-rgb),.3) 67px, rgba(var(--accent-rgb),.3) 69px);
+  -webkit-mask-image: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.5) 40%, transparent 92%); mask-image: linear-gradient(to bottom, #000 0%, rgba(0,0,0,.5) 40%, transparent 92%); }
+.horizon { position: absolute; left: 50%; top: 66%; transform: translate(-50%,-50%); width: 90%; height: 3px; background: linear-gradient(90deg, transparent, rgba(var(--accent-rgb),.7) 30%, var(--accent-2) 50%, rgba(var(--accent-rgb),.7) 70%, transparent); box-shadow: 0 0 30px 6px rgba(var(--accent-rgb),.5); }
+.photo { position: absolute; left: -20px; bottom: 0; width: 560px; opacity: .55; }
+.photo img { width: 100%; -webkit-mask-image: linear-gradient(to left, transparent 5%, #000 50%); mask-image: linear-gradient(to left, transparent 5%, #000 50%); }
+.content { position: relative; z-index: 2; max-width: 920px; }
+.brand { position: absolute; top: 70px; right: 90px; z-index: 3; font-weight: 800; font-size: 34px; letter-spacing: .06em; color: var(--text); display: flex; align-items: center; gap: 14px; }
+.brand img { height: 48px; width: auto; }
+.chip { display: inline-block; font-size: 30px; font-weight: 700; letter-spacing: .06em; color: var(--accent-2); padding: 16px 36px; border: 2px solid rgba(var(--accent-rgb),.6); border-radius: 100px; background: rgba(var(--accent-rgb),.1); margin-bottom: 44px; }
+.punch { font-weight: 800; font-size: 128px; line-height: 1.04; letter-spacing: -.015em; text-shadow: 0 0 40px rgba(var(--accent-rgb),.4); }
+.sub { font-size: 46px; line-height: 1.35; color: var(--text); opacity: .85; margin-top: 34px; max-width: 860px; margin-left: auto; margin-right: auto; }
+.link { position: absolute; bottom: 70px; left: 0; right: 0; z-index: 3; text-align: center; font-size: 34px; font-weight: 700; color: var(--on-accent); }
+.link span { display: inline-block; background: linear-gradient(120deg, var(--accent), var(--accent-2)); padding: 18px 44px; border-radius: 100px; box-shadow: 0 0 60px rgba(var(--accent-rgb),.5); direction: ltr; }
+/* 9:16 story variant: add ?story to the URL */
+body.story { --h: 1920px; }
+body.story .card { padding: 140px 90px; }
+body.story .punch { font-size: 150px; }
+body.story .glow { top: 62%; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="glow" aria-hidden="true"></div>
+  <div class="grid" aria-hidden="true"></div>
+  <div class="horizon" aria-hidden="true"></div>
+  {{#if creative_photo}}<div class="photo" aria-hidden="true"><img src="{{creative_photo}}" alt=""></div>{{/if}}
+  <div class="brand">{{#if brand.logo}}<img src="{{brand.logo}}" alt="">{{/if}}{{brand_name}}</div>
+  <div class="content">
+    <div class="chip">{{date_line}}</div>
+    <h1 class="punch">{{punch}}</h1>
+    <p class="sub">{{subline}}</p>
+  </div>
+  {{#if link}}<div class="link"><span>{{link}}</span></div>{{/if}}
+</div>
+<script>
+  if (location.search.indexOf("story") > -1) document.body.classList.add("story");
+</script>
+</body>
+</html>

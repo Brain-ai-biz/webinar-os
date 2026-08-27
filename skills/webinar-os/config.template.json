@@ -1,0 +1,74 @@
+{
+  "slug": "SHORT-KEBAB-SLUG (למשל ai-clinic) - שם התיקייה, הקבוצה, הלינק המקוצר",
+  "project_name": "השם האנושי של הוובינר, למשל 'וובינר: AI לקליניקה'",
+  "topic": "על מה הוובינר, משפט אחד",
+  "angle": "ההוק הרגשי / עמוד השדרה (למשל 'מלכודת הכלים')",
+  "big_idea": "הרעיון האחד שהמרצה לוקח/ת עליו בעלות",
+  "audience": "למי זה מיועד (למשל 'בעלי ובעלות עסקים קטנים, עסוקים, לא טכנולוגיים')",
+  "date_he": "תאריך בעברית, למשל 'רביעי, ה-16.9'",
+  "date_iso": "YYYY-MM-DD",
+  "time": "HH:MM, למשל '20:00'",
+  "event_iso": "YYYY-MM-DDTHH:MM:00+03:00 (מפעיל ספירה לאחור בדפים)",
+  "duration_min": 60,
+  "host": "שם המרצה",
+  "format": "שידור לייב חינמי (וובינר חי)",
+  "cta_goal": "register-and-show-up | sell-product | book-call",
+  "offer": {
+    "name": "המוצר/התוכנית שנחשפת בוובינר (ריק אם אין)",
+    "what": "תיאור ההצעה בשורה אחת",
+    "teaser": "שורת הטיזר למשתתפים בלייב, בלי הבטחה קונקרטית",
+    "no_promise": true
+  },
+  "deck": {
+    "act_count": 14,
+    "slide_target": 40,
+    "no_live_demo": true,
+    "screenshots": "צילומי מסך של מערכות אמיתיות במקום דמו חי"
+  },
+  "research_brief": "מתמלא בשלב המחקר: נתונים מאומתים + מקורות בלבד",
+  "narrative_points": [
+    "בולטים נוספים שהמצגת והקופי חייבים לכסות (רשות)"
+  ],
+
+  "brand_name": "שם המותג/העסק כפי שיופיע בדפים ובקריאייטיבים",
+  "brand_url": "https://האתר-שלך (הלוגו בדף מקשר לשם)",
+  "privacy_url": "https://כתובת מדיניות הפרטיות שלך (חובה לפני עלייה לאוויר)",
+  "accessibility_url": "https://הצהרת הנגישות שלך (רשות, מומלץ)",
+  "hero_photo": "נתיב לתמונת המרצה לדף (רשות; קובץ מקומי מועתק אוטומטית)",
+  "creative_photo": "נתיב לתמונת המרצה לקריאייטיבים (רשות)",
+  "brand": {
+    "bg": "#0B1220",
+    "panel": "#131C2E",
+    "text": "#F5F7FB",
+    "muted": "#9AA6BD",
+    "accent": "#F5A623",
+    "accent_2": "#FFC857",
+    "on_accent": "#1A1200",
+    "font": "Assistant",
+    "logo": "נתיב לקובץ לוגו (רשות)"
+  },
+
+  "integrations": {
+    "hosting": "netlify-drop | cloudflare-pages | wordpress | other | none",
+    "mailing": "שם מערכת הדיוור (רב מסר / smoove / ActiveCampaign / Mailchimp / אחר) | none",
+    "mailing_auto": false,
+    "whatsapp": "manual | green-api | other-api",
+    "video": "zoom | google-meet | streamyard | other",
+    "shortener": "bitly | dub | none",
+    "images": "html-screenshot | canva | ai-image-tool",
+    "slides": "deck-basic | google-slides | canva | powerpoint",
+    "capture": "google-form | endpoint | mailing-form | button-only"
+  },
+
+  "group_link": "לינק ההזמנה לקבוצת הוואטסאפ (מתמלא אחרי היצירה)",
+  "short_link": "הלינק המקוצר לקבוצה (מתמלא אחרי היצירה)",
+  "broadcast_link": "לינק הזום/השידור (מתמלא אחרי היצירה)",
+  "page_url": "כתובת דף ההרשמה אחרי הפריסה (מתמלא בסוף)",
+  "capture_endpoint": "",
+  "form_action": "",
+  "form_fields": {
+    "name": "entry.XXXX (Google Form) או name",
+    "email": "entry.XXXX או email",
+    "phone": "entry.XXXX או phone"
+  }
+}

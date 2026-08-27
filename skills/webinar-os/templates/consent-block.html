@@ -1,0 +1,24 @@
+<!--
+  Webinar-OS · תיבת הסכמה (מודבקת אוטומטית לתוך טופס ההרשמה, לפני כפתור השליחה)
+
+  תיבה אחת משולבת: אישור מדיניות פרטיות + תנאי שימוש + הסכמה לקבלת עדכונים. חובה לסימון.
+  {{privacy_url}} ו-{{brand_name}} מתמלאים מ-config.json.
+
+  למה זה חשוב: כל טופס שאוסף מייל/טלפון בישראל צריך הסכמה מתועדת (חוק הגנת הפרטיות)
+  והסכמה לדיוור (חוק הספאם). התיבה הזו מתעדת את שניהם עם חותמת זמן לכל נרשם/ת.
+  אם היועץ/ת המשפטי/ת שלך דורש/ת שתי תיבות נפרדות, מפצלים כאן לשתיים.
+
+  חיווט: window.webinarConsent() מחזיר { consent, consent_ts } ומצורף לפיילוד של הטופס.
+-->
+<div class="consent" style="margin:14px 0;font-size:13.5px;line-height:1.6;text-align:right">
+  <label for="consent-all" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer">
+    <input type="checkbox" id="consent-all" name="{{form_fields.consent}}" value="yes" required style="margin-top:3px;flex:none">
+    <span>קראתי ואני מאשר/ת את <a href="{{privacy_url}}" target="_blank" rel="noopener">מדיניות הפרטיות</a> ותנאי השימוש, ומעוניין/ת לקבל עדכונים מ-{{brand_name}}</span>
+  </label>
+</div>
+<script>
+  window.webinarConsent = function () {
+    var c = document.getElementById("consent-all");
+    return { consent: !!(c && c.checked), consent_ts: new Date().toISOString() };
+  };
+</script>
