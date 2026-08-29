@@ -6,7 +6,7 @@ Zips the landing/ folder in memory and POSTs it. No CLI, no Node. Standard libra
 
 Needs NETLIFY_AUTH_TOKEN in .env (Personal access token: app.netlify.com/user/applications).
 
-Usage:
+Usage (Windows: python instead of python3):
     python3 deploy_netlify.py --config outputs/webinars/<slug>/config.json
         first run: creates a site named <slug>-<random> (renamed to <slug> if free), deploys, writes
         config.netlify_site_id + config.page_url. next runs: redeploys to the same site.
@@ -58,8 +58,9 @@ def main():
 
     token = read_env(find_project_root()).get("NETLIFY_AUTH_TOKEN")
     if not token:
+        env_set = Path(__file__).resolve().parent / "env_set.py"
         sys.exit("x NETLIFY_AUTH_TOKEN missing. app.netlify.com/user/applications -> New access token, then: "
-                 "python3 env_set.py NETLIFY_AUTH_TOKEN <token>")
+                 "%s %s NETLIFY_AUTH_TOKEN <token>" % (Path(sys.executable).name, env_set))
     s, me = http("GET", API + "/user", token, timeout=30)
     if s != 200:
         sys.exit("x Netlify token rejected (status %s): %s" % (s, str(me)[:200]))

@@ -3,8 +3,12 @@
   תיבה אחת משולבת: מדיניות פרטיות + תנאי שימוש + הסכמה לקבלת עדכונים. חובה לסימון, לא מסומנת מראש.
   לעולם לא מפצלים לשתיים. privacy_url, terms_url ו-business_name מגיעים מ-config.json.
   אין privacy_url? הטקסט נשאר בלי לינק, וצריך להוסיף אחד לפני שעולים לאוויר.
+  ה-value של התיבה הוא טקסט האפשרות המדויק מ-Google Form (manual-paths.md §1, שלב 1): שאלת "תיבות סימון"
+  ב-Google Forms מקבלת רק ערך שזהה אות-באות לטקסט האפשרות. ערך אחר ("yes") גורם ל-formResponse לדחות
+  את כל השליחה בשקט (הדף שולח ב-no-cors ומציג "תודה" בכל מקרה) ואף שורה לא נכתבת לגיליון.
+  משנים את טקסט האפשרות בטופס? משנים גם כאן, אות-באות. אין entry להסכמה? name ריק, והשדה לא נשלח בכלל.
 -->
 <label class="consent" for="consent">
-  <input type="checkbox" id="consent" name="{{form_fields.consent}}" value="yes" required>
+  <input type="checkbox" id="consent" name="{{form_fields.consent}}" value="קראתי ואני מאשר/ת את מדיניות הפרטיות ותנאי השימוש, ומעוניין/ת לקבל עדכונים" required>
   <span>קראתי ואני מאשר/ת את {{#if privacy_url}}<a href="{{privacy_url}}" target="_blank" rel="noopener">מדיניות הפרטיות</a>{{/if}}{{#if no_privacy}}מדיניות הפרטיות{{/if}} {{#if terms_url}}ו<a href="{{terms_url}}" target="_blank" rel="noopener">תנאי השימוש</a>{{/if}}{{#if no_terms}}ותנאי השימוש{{/if}}, ומעוניין/ת לקבל עדכונים מ-{{business_name}}</span>
 </label>

@@ -28,7 +28,8 @@ def read_env(root=None):
     data = {}
     f = root / ".env"
     if f.exists():
-        for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+        # utf-8-sig strips a BOM written by Windows editors (Notepad, PowerShell Out-File)
+        for line in f.read_text(encoding="utf-8-sig", errors="replace").splitlines():
             line = line.strip()
             if not line or line.startswith("#") or "=" not in line:
                 continue
@@ -41,18 +42,26 @@ def read_env(root=None):
     return data
 
 
+def write_utf8(path, text):
+    """Write text as UTF-8 with LF newlines, no BOM, on every OS.
+    Path.write_text(newline=...) needs Python 3.10+, so open() is used instead."""
+    with Path(path).open("w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+
+
 def load_json(path):
     p = Path(path)
     if not p.exists():
         sys.exit("x not found: %s" % p)
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        # utf-8-sig strips a BOM written by Windows editors (Notepad, PowerShell Out-File)
+        return json.loads(p.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as e:
         sys.exit("x invalid JSON in %s: %s" % (p, e))
 
 
 def save_json(path, data):
-    Path(path).write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    write_utf8(path, json.dumps(data, ensure_ascii=False, indent=2) + "\n")
 
 
 def http(method, url, token=None, data=None, headers=None, timeout=60):

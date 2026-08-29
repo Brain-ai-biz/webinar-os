@@ -5,7 +5,7 @@ render_pages.py - Webinar-OS: renders the landing page, the thank-you page, the 
 (and, in the advanced path, the creatives) from the JSON files of one webinar.
 Standard library only (Python 3.9+). Works on Windows / Mac / Linux.
 
-Usage:
+Usage (Windows: python instead of python3):
     python3 render_pages.py --config outputs/webinars/<slug>/config.json
     python3 render_pages.py --config ... --only pages      landing + thank-you only
     python3 render_pages.py --config ... --only deck       deck.html + script.md only
@@ -74,14 +74,32 @@ DEFAULT_BRAND = {
 }
 
 WORDS_PER_SEC = 2.5
+
+# the 14 acts of the base deck (reference/deck-structure.md section 1); slide["act"] = 1..14
+ACT_NAMES = {
+    1: "פתיחה", 2: "למה דווקא עכשיו", 3: "מי אני", 4: "הבעיה כמו שהקהל מכיר אותה",
+    5: "למה הדרך הרגילה נכשלת", 6: "הרעיון הגדול", 7: "הוכחה שזה עובד", 8: "עיקרון 1",
+    9: "עיקרון 2", 10: "עיקרון 3", 11: "הדגמה", 12: "סיכום", 13: "הצעד הבא",
+    14: "שאלות ותשובות + סיום",
+}
 CREATIVE_IDS = ["tomorrow", "tomorrow_time", "today", "one_hour", "live"]
 
 _warned = set()
+_blocking = []  # deck warnings (interaction / acts) that must reach zero before the step is done
 
 
-def warn(msg):
+def write_utf8(path, text):
+    """Write text as UTF-8 with LF newlines. Path.write_text(newline=...) needs 3.10+;
+    this works on Python 3.9 (the stock macOS interpreter) and on Windows."""
+    with Path(path).open("w", encoding="utf-8", newline="\n") as f:
+        f.write(text)
+
+
+def warn(msg, block=False):
     if msg not in _warned:
         _warned.add(msg)
+        if block:
+            _blocking.append(msg)
         print("  ! " + msg, file=sys.stderr)
 
 
@@ -157,7 +175,8 @@ def load_json(path, required=True):
             sys.exit("x not found: %s" % p)
         return None
     try:
-        return json.loads(p.read_text(encoding="utf-8"))
+        # utf-8-sig strips a BOM written by Windows editors (Notepad, PowerShell Out-File)
+        return json.loads(p.read_text(encoding="utf-8-sig"))
     except json.JSONDecodeError as e:
         sys.exit("x invalid JSON in %s: %s" % (p, e))
 
@@ -206,6 +225,8 @@ def build_brand(config, config_dir, out_dir):
             if v not in (None, "") and not (isinstance(v, str) and HEBREW.search(v)):
                 brand[k] = v
     brand["accent_rgb"] = hex_to_rgb(brand["accent"])
+    # the Google Fonts <link> in all four templates: "Noto Sans Hebrew" -> "Noto+Sans+Hebrew"
+    brand["font_query"] = "+".join(str(brand["font"]).split())
     brand["logo"] = resolve_asset(brand.get("logo"), config_dir, out_dir)
     return brand
 
@@ -301,8 +322,8 @@ def render_pages(ctx, out_dir):
     ty_out = landing_dir / "thank-you" / "index.html"
     ty_out.parent.mkdir(parents=True, exist_ok=True)
     landing_out = landing_dir / "index.html"
-    landing_out.write_text(render((TEMPLATES / "landing.html").read_text(encoding="utf-8"), ctx), encoding="utf-8", newline="\n")
-    ty_out.write_text(render((TEMPLATES / "thank-you.html").read_text(encoding="utf-8"), ctx), encoding="utf-8", newline="\n")
+    write_utf8(landing_out, render((TEMPLATES / "landing.html").read_text(encoding="utf-8"), ctx))
+    write_utf8(ty_out, render((TEMPLATES / "thank-you.html").read_text(encoding="utf-8"), ctx))
     return [landing_out, ty_out]
 
 
@@ -330,9 +351,9 @@ def render_creatives(ctx, out_dir, config_dir):
         local["punch_html"] = RE_TIME.sub(r'<span class="hl">\1</span>', esc(punch))
         local["punch_size"] = "long" if len(punch) > 14 else ""
         local["creative_class"] = "live" if cid == "live" else ""
-        local["tag_text"] = item.get("tag") or ("LIVE עכשיו" if cid == "live" else "שידור חי")
+        local["tag_text"] = item.get("tag") or ("עכשיו בשידור חי" if cid == "live" else "שידור חי")
         p = cdir / ("%s.html" % cid)
-        p.write_text(render(tpl, local), encoding="utf-8", newline="\n")
+        write_utf8(p, render(tpl, local))
         written.append(p)
     return written
 
@@ -415,6 +436,58 @@ def slide_html(s, idx, ctx):
     return head + body + "</section>\n"
 
 
+def interaction_gaps(slides, max_gap=7, tail=5):
+    """Ranges (1-based, inclusive) of slides without [עצירה]/[צ'אט]: any run longer
+    than max_gap, plus the last `tail` slides when none of them interacts."""
+    marks = [bool(re.search(r"\[(עצירה|צ'אט)\]", str(s.get("notes") or ""))) for s in slides]
+    gaps, run_start = [], None
+    for i, m in enumerate(marks, 1):
+        if m:
+            if run_start and i - run_start > max_gap:
+                gaps.append((run_start, i - 1))
+            run_start = None
+        elif run_start is None:
+            run_start = i
+    n = len(marks)
+    if run_start and n - run_start + 1 > max_gap:
+        gaps.append((run_start, n))
+    if n and not any(marks[max(0, n - tail):]):
+        t = (max(1, n - tail + 1), n)
+        if not any(a <= t[0] and b >= t[1] for a, b in gaps):
+            gaps.append(t)
+    return gaps
+
+
+def slide_act(s, idx):
+    """slide['act'] as int 1-14, or None (missing / invalid -> warning)."""
+    raw = s.get("act")
+    if raw in (None, ""):
+        return None
+    try:
+        act = int(raw)
+    except (TypeError, ValueError):
+        act = 0
+    if act not in ACT_NAMES:
+        warn("slide %d: act '%s' is not 1-14 -> ignored" % (idx, raw), block=True)
+        return None
+    return act
+
+
+def check_acts(slides, acts_seen):
+    """Warn if the deck does not walk through all 14 acts (base flow requirement)."""
+    if not acts_seen:
+        warn("no slide has an 'act' field -> script.md has no act headers; add \"act\": 1-14 to every slide", block=True)
+        return
+    no_act = [str(i) for i, s in enumerate(slides, 1) if slide_act(s, i) is None]
+    if no_act:
+        warn("slides without 'act': %s" % ", ".join(no_act), block=True)
+    missing = [n for n in ACT_NAMES if n not in acts_seen]
+    if missing:
+        warn("missing acts: %s (the base deck must cover all 14)" % ", ".join("%d (%s)" % (n, ACT_NAMES[n]) for n in missing), block=True)
+    if acts_seen != sorted(acts_seen) or len(acts_seen) != len(set(acts_seen)):
+        warn("acts are out of order or split: %s (expected 1..14 in one pass)" % ", ".join(map(str, acts_seen)), block=True)
+
+
 def render_deck(config, deck, config_dir, out_dir):
     ctx = base_context(config, config_dir, out_dir)
     ctx["deck"] = {"title": deck.get("title") or ctx["project_name"]}
@@ -424,30 +497,42 @@ def render_deck(config, deck, config_dir, out_dir):
     ctx["slides_html"] = "".join(slide_html(s, i + 1, ctx) for i, s in enumerate(slides))
     tpl = (TEMPLATES / "deck-basic.html").read_text(encoding="utf-8")
     deck_out = out_dir / "deck.html"
-    deck_out.write_text(render(tpl, ctx), encoding="utf-8", newline="\n")
+    write_utf8(deck_out, render(tpl, ctx))
 
     # presenter script, timed at 2.5 words/sec (count words, never guess)
     lines = ["# תסריט הגשה · %s" % ctx["deck"]["title"], "",
              "קצב: %.1f מילים לשנייה. `[עצירה]` = שאלה לקהל, `[צ'אט]` = לבקש תגובה בצ'אט. שקף = רעיון אחד." % WORDS_PER_SEC, ""]
     total_words = 0
+    acts_seen = []
+    current_act = None
     for i, s in enumerate(slides, 1):
+        act = slide_act(s, i)
+        if act and act != current_act:
+            current_act = act
+            acts_seen.append(act)
+            lines.append("## מערכה %d · %s" % (act, ACT_NAMES[act]))
+            lines.append("")
         notes = str(s.get("notes") or "").strip()
         words = len(re.findall(r"\S+", re.sub(r"\[[^\]]+\]", "", notes)))
         total_words += words
         secs = int(round(words / WORDS_PER_SEC))
         title = s.get("title") or s.get("quote") or s.get("claim") or s.get("pattern")
-        lines.append("## שקף %d · %s · %s" % (i, s.get("pattern", ""), title))
+        lines.append("%s שקף %d · %s · %s" % ("###" if acts_seen else "##", i, s.get("pattern", ""), title))
         lines.append("")
         lines.append(notes if notes else "(אין הערות לשקף הזה)")
         lines.append("")
         lines.append("*%d מילים · כ-%d שניות*" % (words, secs))
         lines.append("")
     mins = total_words / WORDS_PER_SEC / 60
+    check_acts(slides, acts_seen)
+    # interaction check: one [עצירה]/[צ'אט] every 5-7 slides, and one in the last 5
+    for a, b in interaction_gaps(slides):
+        warn("אין אינטראקציה בשקפים %d-%d (צריך [עצירה] או [צ'אט] כל 5-7 שקפים)" % (a, b), block=True)
     lines.append("---")
     lines.append("")
     lines.append("**סך הכל:** %d שקפים · %d מילים · כ-%d דקות דיבור (בלי שאלות ותשובות)." % (len(slides), total_words, round(mins)))
     script_out = out_dir / "script.md"
-    script_out.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
+    write_utf8(script_out, "\n".join(lines) + "\n")
     return [deck_out, script_out], len(slides), round(mins)
 
 
@@ -504,6 +589,12 @@ def main():
         print("ok %s  (%d KB)" % (p, max(1, p.stat().st_size // 1024)))
     if not outputs:
         sys.exit("x nothing rendered: add copy.json and/or deck.json next to config.json")
+    # summary line: the step is done only when this reads "0 אזהרות"
+    n_warn = len(_warned)
+    print("%d אזהרות" % n_warn if n_warn else "0 אזהרות")
+    if _blocking:
+        print("x %d deck warnings must be fixed (interaction / acts) before the step is done -> fix deck.json and render again" % len(_blocking), file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

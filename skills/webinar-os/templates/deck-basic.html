@@ -4,7 +4,7 @@
   Webinar-OS · תבנית מצגת (עברית, RTL, 16:9, 1920x1080 מוקטן לחלון)
   ============================================================
   הקובץ הזה מתמלא אוטומטית: scripts/render_pages.py קורא deck.json והופך כל שקף
-  לבלוק <section class="slide" data-pattern="..."> במקום שורת הפלייסהולדר של השקפים (slides_html) למטה.
+  לבלוק section.slide (עם data-pattern לפי התבנית) במקום שורת הפלייסהולדר של השקפים (slides_html) למטה.
   אפשר גם לערוך את deck.html שנוצר ביד: מעתיקים שקף, מדביקים, מחליפים טקסט.
 
   8 תבניות שקף: title · section · bullets · three-columns · big-stat · quote · screenshot · cta
@@ -12,7 +12,8 @@
 
   הצגה: פותחים בדפדפן (כרום מומלץ). חץ ימינה / רווח = הבא, חץ שמאלה = הקודם, F = מסך מלא.
   שורות עם class="reveal" נחשפות אחת-אחת בלחיצה. קישור ישיר לשקף: #s=5 בסוף הכתובת.
-  PDF: ?print בסוף הכתובת ואז Ctrl/Cmd+P → שמירה כ-PDF (שקף = עמוד).
+  PDF: לוחצים P (מעבר למצב הדפסה: כל השקפים ברצף) ואז Ctrl/Cmd+P → שמירה כ-PDF (שקף = עמוד).
+  Esc במצב הדפסה = חזרה למצגת. עובד גם ידנית: deck.html?print (בלי #s=N אחרי זה).
   מערכת העיצוב: אותו בלוק :root (8 שורות) כמו דף ההרשמה, דף התודה והקריאייטיב.
   ============================================================
 -->
@@ -23,7 +24,7 @@
 <title>{{deck.title}}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family={{brand.font_query}}:wght@400;500;700;800;900&display=swap" rel="stylesheet">
 <style>
 /* ===== 1. מערכת העיצוב: 8 שורות, זהות בכל הקבצים ===== */
 :root{
@@ -73,7 +74,7 @@ p{font-size:40px;line-height:1.45}
 
 /* ===== 3. תבניות ===== */
 /* title */
-[data-pattern="title"].active,body.print .slide[data-pattern="title"]{display:flex;flex-direction:column;justify-content:center}
+[data-pattern="title"].active,body.print .slide[data-pattern="title"]{display:flex;flex-direction:column;justify-content:center;align-items:flex-start}
 [data-pattern="title"] h1{font-size:128px;max-width:1520px}
 [data-pattern="title"] .sub{font-size:50px;color:var(--muted);margin-top:36px;max-width:1400px;line-height:1.3}
 [data-pattern="title"] .event{position:absolute;bottom:100px;right:150px;display:flex;gap:16px;flex-wrap:wrap}
@@ -122,6 +123,41 @@ p{font-size:40px;line-height:1.45}
 .frame img[hidden]{display:none}
 .frame .chrome{position:absolute;top:0;right:0;left:0;height:44px;background:rgba(0,0,0,.35);display:flex;align-items:center;gap:10px;padding:0 20px;z-index:2}
 .frame .chrome i{width:14px;height:14px;border-radius:50%;background:var(--muted);display:block;opacity:.6}
+/* screenshot בלי קובץ: הדמיה מעוצבת שנבנית מהטקסט של placeholder, לעולם לא מסגרת ריקה */
+.frame.mock::before{display:none}
+.frame.mock{background:linear-gradient(var(--grid) 1px,transparent 1px) 0 0/48px 48px,linear-gradient(90deg,var(--grid) 1px,transparent 1px) 0 0/48px 48px,var(--surface)}
+.mock-wrap{position:absolute;inset:44px 0 0 0;display:grid;grid-template-columns:1fr 640px;gap:56px;padding:44px 56px 40px;align-items:stretch}
+.mock-side{display:flex;flex-direction:column;gap:22px;min-width:0}
+.mock-tag{display:inline-flex;align-self:flex-start;align-items:center;gap:12px;font-size:24px;font-weight:700;letter-spacing:.08em;color:var(--accent);border:2px solid rgba(var(--accent-rgb),.35);background:rgba(var(--accent-rgb),.08);padding:10px 24px;border-radius:999px}
+.mock-tag::before{content:'';width:12px;height:12px;border-radius:50%;background:var(--accent);box-shadow:0 0 16px var(--accent)}
+.mock-desc{font-size:36px;font-weight:600;line-height:1.35;color:var(--ink);max-width:760px;text-wrap:pretty}
+.mock-drop{margin-top:auto;display:inline-block;align-self:flex-start;white-space:normal;text-wrap:pretty;line-height:1.5;font-size:22px;color:var(--muted);padding:14px 24px;border:2px dashed rgba(255,255,255,.28);border-radius:16px;background:rgba(0,0,0,.25)}
+.mock-drop b{color:var(--ink);font-weight:700;direction:ltr;unicode-bidi:isolate;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:22px;white-space:nowrap}
+.mock-phone{display:flex;flex-direction:column;border-radius:30px;border:1px solid var(--line-2);background:var(--bg);overflow:hidden;box-shadow:0 24px 60px -20px rgba(0,0,0,.6)}
+.mock-head{display:flex;align-items:center;gap:16px;padding:18px 24px;background:rgba(var(--accent-rgb),.14);border-bottom:1px solid var(--line)}
+.mock-head i{width:52px;height:52px;border-radius:50%;background:var(--grad);flex:none}
+.mock-head b{display:block;font-size:26px;font-weight:700}
+.mock-head small{display:block;font-size:20px;color:var(--muted)}
+.mock-body{flex:1;display:flex;flex-direction:column;gap:14px;padding:24px 22px;overflow:hidden}
+.bub{max-width:88%;font-size:26px;line-height:1.35;padding:16px 22px;border-radius:22px;position:relative}
+.bub.in{align-self:flex-start;background:var(--surface);border:1px solid var(--line);border-top-right-radius:6px}
+.bub.out{align-self:flex-end;background:rgba(var(--accent-rgb),.22);border:1px solid rgba(var(--accent-rgb),.35);border-top-left-radius:6px}
+.bub small{display:block;font-size:18px;color:var(--muted);margin-top:8px;direction:ltr;text-align:left}
+.bub.typing{width:110px;height:56px;display:flex;align-items:center;justify-content:center;gap:8px}
+.bub.typing i{width:12px;height:12px;border-radius:50%;background:var(--muted);opacity:.7}
+.mock-table{display:grid;grid-auto-rows:min-content;border-radius:26px;border:1px solid var(--line-2);background:var(--bg);overflow:hidden;font-size:24px}
+.mock-row{display:grid;grid-template-columns:1.1fr 1fr 2fr 1fr;gap:14px;padding:18px 24px;border-bottom:1px solid var(--line);align-items:center}
+.mock-row.head{background:rgba(var(--accent-rgb),.14);font-weight:700;color:var(--accent)}
+.mock-row .bar{height:16px;border-radius:8px;background:var(--line-2)}
+.mock-row .bar.short{width:60%}
+.mock-row .pill{justify-self:start;font-size:20px;font-weight:700;padding:6px 16px;border-radius:999px;background:rgba(var(--accent-rgb),.2);color:var(--ink);white-space:nowrap}
+.mock-panel{display:grid;grid-template-columns:1fr 230px;gap:24px;padding:28px;border-radius:26px;border:1px solid var(--line-2);background:var(--bg)}
+.mock-fields{display:flex;flex-direction:column;gap:18px;min-width:0}
+.mock-field{border:1px solid var(--line);border-radius:16px;padding:14px 18px;background:var(--surface)}
+.mock-field label{display:block;font-size:20px;color:var(--muted);margin-bottom:10px}
+.mock-field span{display:block;font-size:24px;line-height:1.3}
+.mock-qr{align-self:start;aspect-ratio:1;border-radius:18px;border:1px solid var(--line-2);background:repeating-conic-gradient(var(--ink) 0 25%,transparent 0 50%) 0 0/28px 28px;opacity:.8;position:relative}
+.mock-qr::after{content:'QR';position:absolute;inset:auto 0 -40px 0;text-align:center;font-size:20px;color:var(--muted);font-weight:700}
 
 /* cta */
 [data-pattern="cta"].active,body.print .slide[data-pattern="cta"]{display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
@@ -183,11 +219,46 @@ body.print #nav,body.print #counter,body.print #progress{display:none}
   var slides=[].slice.call(document.querySelectorAll('.slide')),n=slides.length,cur=0;
   var deck=document.getElementById('deck'),nav=document.getElementById('nav'),
       counter=document.getElementById('counter'),bar=document.getElementById('progress');
-  var PRINT=/(^|[?&])print(=|&|$)/.test(location.search);
+  /* שקפי screenshot: אם קובץ התמונה חסר, בונים הדמיה מעוצבת מהטקסט של placeholder */
+  function mockFrame(img){
+    var f=img.parentNode;if(!f||f.classList.contains('mock'))return;
+    f.classList.add('mock');img.hidden=true;
+    var text=(f.getAttribute('data-placeholder')||'').replace(/^(כאן\s+)?צילום\s+מסך\s*:?\s*/,'').trim();
+    var segs=text.split(/[,;]|\s\+\s|\sולצ?ידו\s|\sולצדו\s|\sולצדה\s/).map(function(x){return x.trim();}).filter(function(x){return x.length>2;}).slice(0,5);
+    if(!segs.length)segs=[text||'צילום מסך'];
+    var kind=/הגדר|QR|מסך ה/.test(text)?'panel':(/טבל/.test(text)&&!/שיח/.test(text))?'table':'chat';
+    var h='<div class="mock-wrap"><div class="mock-side"><span class="mock-tag">הדמיה, עד שנכנס צילום המסך</span><p class="mock-desc">'+esc(text)+'</p>'+
+      '<span class="mock-drop">להחלפה: שומרים את צילום המסך בשם <b>'+esc(img.getAttribute('src')||'')+'</b> <span style="white-space:nowrap">ליד <b>deck.html</b></span></span></div>';
+    if(kind==='chat'){
+      h+='<div class="mock-phone"><div class="mock-head"><i></i><div><b>העסק שלך</b><small>סוכן וואטסאפ · מקוון</small></div></div><div class="mock-body">';
+      segs.forEach(function(t,i){h+='<div class="bub '+(i%2?'out':'in')+'">'+esc(t)+'</div>';});
+      h+='<div class="bub typing '+(segs.length%2?'out':'in')+'"><i></i><i></i><i></i></div></div></div>';
+    }else if(kind==='table'){
+      h+='<div class="mock-table"><div class="mock-row head"><span>שם</span><span>טלפון</span><span>מה ביקש/ה</span><span>סטטוס</span></div>';
+      var st=['נקבעה פגישה','מחכה לך','ביקש/ה שיחה','נענה'];
+      segs.forEach(function(t,i){h+='<div class="mock-row"><div class="bar"></div><div class="bar short"></div><span>'+esc(t)+'</span><span class="pill">'+st[i%st.length]+'</span></div>';});
+      h+='</div>';
+    }else{
+      h+='<div class="mock-panel"><div class="mock-fields">';
+      segs.forEach(function(t,i){h+='<div class="mock-field"><label>שדה '+(i+1)+'</label><span>'+esc(t)+'</span></div>';});
+      h+='</div><div class="mock-qr"></div></div>';
+    }
+    h+='</div>';
+    f.insertAdjacentHTML('afterbegin',h);
+  }
+  function esc(x){return String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+  [].slice.call(document.querySelectorAll('.frame img')).forEach(function(img){
+    if(img.hidden||(img.complete&&!img.naturalWidth))mockFrame(img);
+    else img.addEventListener('error',function(){mockFrame(img);});
+  });
+  /* מצב הדפסה: ?print בשאילתה, או print בתוך ה-hash (למשל deck.html#s=3?print אחרי דפדוף), או מקש P */
+  var PRINT=/(^|[?&#])print(=|&|$)/.test(location.search+location.hash);
+  function printBase(){return location.href.split('#')[0].split('?')[0];}
   if(PRINT){
     document.body.classList.add('print');
     function fitPrint(){deck.style.zoom=Math.min(1,innerWidth/1920);}
     addEventListener('resize',fitPrint);fitPrint();
+    addEventListener('keydown',function(e){if(e.key==='Escape'){location.href=printBase();}});
     return;
   }
   function scaleToFit(){deck.style.transform='scale('+Math.min(innerWidth/1920,innerHeight/1080)+')';}
@@ -220,6 +291,7 @@ body.print #nav,body.print #counter,body.print #progress{display:none}
       case 'Home':show(0);break;
       case 'End':show(n-1);break;
       case 'f':case 'F':toggleFS();break;
+      case 'p':case 'P':location.href=printBase()+'?print';break;
     }
   });
   function toggleFS(){

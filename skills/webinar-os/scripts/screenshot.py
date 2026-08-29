@@ -4,7 +4,7 @@
 screenshot.py - Webinar-OS (advanced path): render the creatives (and any HTML) to PNG with the
 browser that is already installed (Chrome / Edge / Chromium, headless). No Playwright, no pip.
 
-Usage:
+Usage (Windows: python instead of python3):
     python3 screenshot.py --dir outputs/webinars/<slug>/landing/creatives
     python3 screenshot.py --dir ... --no-story          (1:1 only)
     python3 screenshot.py --file page.html --size 1080x1080 --out page.png

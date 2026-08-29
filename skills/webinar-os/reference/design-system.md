@@ -59,7 +59,7 @@
 "brand": { "bg": "#0B0F14", "surface": "#161B22", "ink": "#FFFFFF", "muted": "#9AA4B2",
            "accent": "#2DD4BF", "accent_2": "#60A5FA", "radius": "14px", "font": "Rubik", "logo": "logo.png" }
 ```
-מריצים `render_pages.py` שוב. כל 4 הקבצים מתעדכנים ביחד. `font` חייב להיות פונט מ-Google Fonts עם עברית (Heebo, Rubik, Assistant, Noto Sans Hebrew, Frank Ruhl Libre); ה-`<link>` בתבניות טוען Heebo, ולפונט אחר מחליפים גם את שורת ה-link בארבעת הקבצים (חיפוש: `family=Heebo`).
+מריצים `render_pages.py` שוב. כל 4 הקבצים מתעדכנים ביחד, כולל שורת ה-`<link>` שטוענת את הפונט מ-Google Fonts (הסקריפט ממלא אותה מ-`font`, רווחים הופכים ל-`+` לבד). `font` חייב להיות פונט מ-Google Fonts עם עברית (Heebo, Rubik, Assistant, Noto Sans Hebrew, Frank Ruhl Libre); לא עורכים את ה-HTML ביד.
 
 **דרך ב:** עורכים את 8 השורות ישירות בקובץ שנוצר. עובד, אבל ריצה חוזרת של `render_pages.py` דורסת.
 

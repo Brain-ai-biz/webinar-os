@@ -88,7 +88,8 @@ def main():
         out = Path.cwd() / "outputs" / "webinars"
         out.mkdir(parents=True, exist_ok=True)
         test = out / ".write-test"
-        test.write_text("ok", encoding="utf-8")
+        with test.open("w", encoding="utf-8", newline="\n") as fh:
+            fh.write("ok\n")
         test.unlink()
         print("ok אפשר לכתוב ל-%s" % out)
     except Exception as e:

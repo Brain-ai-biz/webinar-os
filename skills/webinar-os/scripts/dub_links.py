@@ -8,7 +8,7 @@ Public posts always use the short link, so a destination can change later withou
 
 Needs DUB_API_KEY in .env (app.dub.co -> Settings -> API Keys).
 
-Usage:
+Usage (Windows: python instead of python3):
     python3 dub_links.py --config outputs/webinars/<slug>/config.json create        both (skips what exists)
     python3 dub_links.py --config ... create group|live
     python3 dub_links.py --config ... update group --url https://chat.whatsapp.com/NEW   (group 2 is full? swap here)
@@ -57,8 +57,9 @@ def main():
 
     token = read_env(find_project_root()).get("DUB_API_KEY")
     if not token:
+        env_set = Path(__file__).resolve().parent / "env_set.py"
         sys.exit("x DUB_API_KEY missing. app.dub.co -> Settings -> API Keys -> Create, then: "
-                 "python3 env_set.py DUB_API_KEY <key>")
+                 "%s %s DUB_API_KEY <key>" % (Path(sys.executable).name, env_set))
     s, ws = http("GET", API + "/links?pageSize=1", token, timeout=30)
     if s != 200:
         sys.exit("x Dub key rejected (status %s): %s" % (s, str(ws)[:200]))
