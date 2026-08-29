@@ -1,24 +1,10 @@
 <!--
-  Webinar-OS · תיבת הסכמה (מודבקת אוטומטית לתוך טופס ההרשמה, לפני כפתור השליחה)
-
-  תיבה אחת משולבת: אישור מדיניות פרטיות + תנאי שימוש + הסכמה לקבלת עדכונים. חובה לסימון.
-  {{privacy_url}} ו-{{brand_name}} מתמלאים מ-config.json.
-
-  למה זה חשוב: כל טופס שאוסף מייל/טלפון בישראל צריך הסכמה מתועדת (חוק הגנת הפרטיות)
-  והסכמה לדיוור (חוק הספאם). התיבה הזו מתעדת את שניהם עם חותמת זמן לכל נרשם/ת.
-  אם היועץ/ת המשפטי/ת שלך דורש/ת שתי תיבות נפרדות, מפצלים כאן לשתיים.
-
-  חיווט: window.webinarConsent() מחזיר { consent, consent_ts } ומצורף לפיילוד של הטופס.
+  Webinar-OS · תיבת הסכמה אחת (מוזרקת אוטומטית לטופס ההרשמה, לפני כפתור השליחה)
+  תיבה אחת משולבת: מדיניות פרטיות + תנאי שימוש + הסכמה לקבלת עדכונים. חובה לסימון, לא מסומנת מראש.
+  לעולם לא מפצלים לשתיים. {{privacy_url}}, {{terms_url}} ו-{{business_name}} מגיעים מ-config.json.
+  אין privacy_url? הטקסט נשאר בלי לינק, וצריך להוסיף אחד לפני שעולים לאוויר.
 -->
-<div class="consent" style="margin:14px 0;font-size:13.5px;line-height:1.6;text-align:right">
-  <label for="consent-all" style="display:flex;align-items:flex-start;gap:8px;cursor:pointer">
-    <input type="checkbox" id="consent-all" name="{{form_fields.consent}}" value="yes" required style="margin-top:3px;flex:none">
-    <span>קראתי ואני מאשר/ת את <a href="{{privacy_url}}" target="_blank" rel="noopener">מדיניות הפרטיות</a> ותנאי השימוש, ומעוניין/ת לקבל עדכונים מ-{{brand_name}}</span>
-  </label>
-</div>
-<script>
-  window.webinarConsent = function () {
-    var c = document.getElementById("consent-all");
-    return { consent: !!(c && c.checked), consent_ts: new Date().toISOString() };
-  };
-</script>
+<label class="consent" for="consent">
+  <input type="checkbox" id="consent" name="{{form_fields.consent}}" value="yes" required>
+  <span>קראתי ואני מאשר/ת את {{#if privacy_url}}<a href="{{privacy_url}}" target="_blank" rel="noopener">מדיניות הפרטיות</a>{{/if}}{{#if no_privacy}}מדיניות הפרטיות{{/if}} {{#if terms_url}}ו<a href="{{terms_url}}" target="_blank" rel="noopener">תנאי השימוש</a>{{/if}}{{#if no_terms}}ותנאי השימוש{{/if}}, ומעוניין/ת לקבל עדכונים מ-{{business_name}}</span>
+</label>
