@@ -301,8 +301,8 @@ def render_pages(ctx, out_dir):
     ty_out = landing_dir / "thank-you" / "index.html"
     ty_out.parent.mkdir(parents=True, exist_ok=True)
     landing_out = landing_dir / "index.html"
-    landing_out.write_text(render((TEMPLATES / "landing.html").read_text(encoding="utf-8"), ctx), encoding="utf-8")
-    ty_out.write_text(render((TEMPLATES / "thank-you.html").read_text(encoding="utf-8"), ctx), encoding="utf-8")
+    landing_out.write_text(render((TEMPLATES / "landing.html").read_text(encoding="utf-8"), ctx), encoding="utf-8", newline="\n")
+    ty_out.write_text(render((TEMPLATES / "thank-you.html").read_text(encoding="utf-8"), ctx), encoding="utf-8", newline="\n")
     return [landing_out, ty_out]
 
 
@@ -332,7 +332,7 @@ def render_creatives(ctx, out_dir, config_dir):
         local["creative_class"] = "live" if cid == "live" else ""
         local["tag_text"] = item.get("tag") or ("LIVE עכשיו" if cid == "live" else "שידור חי")
         p = cdir / ("%s.html" % cid)
-        p.write_text(render(tpl, local), encoding="utf-8")
+        p.write_text(render(tpl, local), encoding="utf-8", newline="\n")
         written.append(p)
     return written
 
@@ -424,7 +424,7 @@ def render_deck(config, deck, config_dir, out_dir):
     ctx["slides_html"] = "".join(slide_html(s, i + 1, ctx) for i, s in enumerate(slides))
     tpl = (TEMPLATES / "deck-basic.html").read_text(encoding="utf-8")
     deck_out = out_dir / "deck.html"
-    deck_out.write_text(render(tpl, ctx), encoding="utf-8")
+    deck_out.write_text(render(tpl, ctx), encoding="utf-8", newline="\n")
 
     # presenter script, timed at 2.5 words/sec (count words, never guess)
     lines = ["# תסריט הגשה · %s" % ctx["deck"]["title"], "",
@@ -447,7 +447,7 @@ def render_deck(config, deck, config_dir, out_dir):
     lines.append("")
     lines.append("**סך הכל:** %d שקפים · %d מילים · כ-%d דקות דיבור (בלי שאלות ותשובות)." % (len(slides), total_words, round(mins)))
     script_out = out_dir / "script.md"
-    script_out.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    script_out.write_text("\n".join(lines) + "\n", encoding="utf-8", newline="\n")
     return [deck_out, script_out], len(slides), round(mins)
 
 
