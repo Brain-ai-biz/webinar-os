@@ -20,9 +20,7 @@
 <meta property="og:type" content="website">
 {{#if og_image}}<meta property="og:image" content="{{og_image}}">{{/if}}
 {{#if page_url}}<meta property="og:url" content="{{page_url}}"><link rel="canonical" href="{{page_url}}">{{/if}}
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family={{brand.font_query}}:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+{{{brand.font_links}}}
 <style>
 /* ===== 1. מערכת העיצוב: 8 שורות, זהות בכל הקבצים (reference/design-system.md) ===== */
 :root{
@@ -38,7 +36,7 @@
 /* ===== נגזרות (לא נוגעים) ===== */
 :root{
   --on-accent:{{brand.on_accent}}; --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
-  --accent-rgb:{{brand.accent_rgb}}; --glow:rgba(var(--accent-rgb),.22); --grid:rgba(255,255,255,.045);
+  --accent-rgb:{{brand.accent_rgb}}; --accent-2-rgb:{{brand.accent_2_rgb}}; --glow:rgba(var(--accent-rgb),.22); --glow-2:rgba(var(--accent-2-rgb),.14); --grid:rgba(255,255,255,.045);
   --s1:8px; --s2:16px; --s3:24px; --s4:40px; --s5:64px; --s6:96px;
   --max:1080px; --narrow:760px;
   --grad:linear-gradient(120deg,var(--accent),var(--accent-2));
@@ -62,7 +60,7 @@ section{position:relative;padding:clamp(64px,9vw,112px) 0}
 .scene::before{content:"";position:absolute;inset:-10%;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:64px 64px;mask-image:radial-gradient(ellipse 70% 55% at 50% 22%,#000 0%,transparent 75%);-webkit-mask-image:radial-gradient(ellipse 70% 55% at 50% 22%,#000 0%,transparent 75%)}
 .scene .glow{position:absolute;border-radius:50%;filter:blur(90px);animation:drift 24s ease-in-out infinite alternate}
 .scene .g1{width:60vw;height:60vw;max-width:820px;max-height:820px;inset-inline-end:-18vw;top:-22vw;background:var(--glow)}
-.scene .g2{width:50vw;height:50vw;max-width:700px;max-height:700px;inset-inline-start:-18vw;top:40vh;background:rgba(80,110,255,.14);animation-delay:-9s}
+.scene .g2{width:50vw;height:50vw;max-width:700px;max-height:700px;inset-inline-start:-18vw;top:40vh;background:var(--glow-2);animation-delay:-9s}
 @keyframes drift{to{transform:translate3d(5vw,4vh,0) scale(1.06)}}
 
 /* ===== טיפוגרפיה ===== */

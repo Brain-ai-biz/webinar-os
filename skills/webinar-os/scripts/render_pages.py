@@ -14,6 +14,10 @@ Usage (Windows: python instead of python3):
         step 8 (design round): renders a throwaway copy with the tokens of one design
         direction into <out>/previews/landing-a.html + thank-you-a.html + deck-a.html.
         The real files are never touched, and script.md is not rewritten.
+    python3 render_pages.py --spread dir-a.json dir-b.json dir-c.json
+        step 8 (design round): measures how far apart the directions are (background hue,
+        accent hue, typeface, corner grammar) and fails when two of them are the same idea
+        twice. Run it BEFORE showing anything to the participant. No rendering, no config.
 
 Inputs (next to config.json unless overridden):
     config.json   facts: slug, project_name, business_name, date_he, time, event_iso, group_link, ...
@@ -77,7 +81,19 @@ DEFAULT_BRAND = {
     "logo": "",
     "direction_name": "",   # step 8: the name of the chosen design direction (documentation)
     "extra_css": "",        # step 8: 2-3 grammar tweak lines, injected at the end of the <style>
+    "deck_font": "",        # step 8: a different typeface for the deck only (empty = same as font)
+    "font_links": "",       # step 8: extra Google Fonts stylesheet URLs (string or list of strings)
+    "deck": {},             # step 8: per-surface token overrides for the deck (bg/accent/font/extra_css...)
 }
+
+# tokens a direction may override per surface (brand.deck)
+SURFACE_TOKENS = ("bg", "surface", "ink", "muted", "accent", "accent_2", "radius",
+                  "font", "extra_css", "logo", "direction_name")
+# a Google Fonts family name: latin letters, digits and spaces only
+RE_FONT_NAME = re.compile(r"^[A-Za-z0-9 ]{1,60}$")
+# anything that looks like an HTML tag inside extra_css (never allowed: extra_css is CSS only)
+RE_TAGISH = re.compile(r"<[^>]*>?")
+GOOGLE_FONTS_PREFIX = "https://fonts.googleapis.com/"
 
 # WCAG AA floors checked on every render (step 8 must verify, never assume)
 AA_TEXT = 4.5
@@ -231,15 +247,18 @@ def contrast(a, b):
     return (hi + 0.05) / (lo + 0.05)
 
 
-def check_contrast(brand):
-    """AA gate on the token block. Any custom palette is measured, never assumed."""
+def check_contrast(brand, surface=""):
+    """AA gate on the token block of ONE surface. Every surface that is rendered is
+    measured with its own final palette (a deck direction and a page direction may differ),
+    and never assumed."""
+    tag = ("(%s) " % surface) if surface else ""
     pairs = [("ink", "bg", AA_TEXT), ("muted", "bg", AA_TEXT),
              ("on_accent", "accent", AA_TEXT), ("accent", "bg", AA_LARGE),
              ("ink", "surface", AA_TEXT)]
     for fg, bg, floor in pairs:
         ratio = contrast(brand.get(fg), brand.get(bg))
         if ratio < floor:
-            warn("contrast %s on %s is %.1f:1 (needs %.1f:1) -> pick a different colour" % (fg, bg, ratio, floor))
+            warn("%scontrast %s on %s is %.1f:1 (needs %.1f:1) -> pick a different colour" % (tag, fg, bg, ratio, floor))
 
 
 def url_or_empty(value):
@@ -248,10 +267,14 @@ def url_or_empty(value):
     return "" if (not v or HEBREW.search(v)) else v
 
 
-def resolve_asset(value, config_dir, out_dir):
+def resolve_asset(value, config_dir, out_dir, key="asset"):
     """URL stays as is; a local file is copied next to the output and referenced by name."""
     value = str(value or "").strip()
-    if not value or HEBREW.search(value):
+    if not value:
+        return ""
+    if HEBREW.search(value):
+        warn("%s holds Hebrew text (\"%s\") instead of a file name or a URL -> skipped (nothing is shown in its place)"
+             % (key, value[:60]))
         return ""
     if value.startswith(("http://", "https://", "/", "data:")):
         return value
@@ -266,31 +289,125 @@ def resolve_asset(value, config_dir, out_dir):
     return ""
 
 
-def build_brand(config, config_dir, out_dir):
+def clean_css(value, where):
+    """extra_css is CSS only, never HTML. A direction that tries to break out of the
+    <style> block (for example '</style><link ...><style>' to load a font) is stripped
+    and reported loudly - the typeface has its own tokens: font, deck_font, font_links."""
+    text = str(value or "")
+    if "<" not in text:
+        return text
+    cleaned = RE_TAGISH.sub("", text).replace("<", "")
+    warn("%s contains HTML and not only CSS -> the tags were removed. extra_css is CSS only; "
+         "for a typeface use brand.font / brand.deck_font / brand.font_links" % where)
+    return cleaned
+
+
+def font_family(value, where):
+    """A Google Fonts family name in latin letters. Anything else falls back to Heebo."""
+    name = " ".join(str(value or "").split())
+    if not name:
+        return DEFAULT_BRAND["font"]
+    if not RE_FONT_NAME.match(name):
+        warn("%s = \"%s\" is not a Google Fonts family name (latin letters and spaces only) -> Heebo was used"
+             % (where, name[:60]))
+        return DEFAULT_BRAND["font"]
+    return name
+
+
+def font_links_html(fonts, extra):
+    """The whole <head> font block for one surface: preconnects + one stylesheet per family
+    + any extra Google Fonts URL the direction declared. Nothing else may reach the <head>."""
+    out = ['<link rel="preconnect" href="https://fonts.googleapis.com">',
+           '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>']
+    seen = []
+    for f in fonts:
+        q = "+".join(str(f).split())
+        if q and q not in seen:
+            seen.append(q)
+            out.append('<link href="https://fonts.googleapis.com/css2?family=%s'
+                       ':wght@400;500;700;800;900&display=swap" rel="stylesheet">' % q)
+    if isinstance(extra, str):
+        extra = [x for x in extra.split() if x]
+    for url in (extra or []):
+        u = str(url).strip()
+        if not u:
+            continue
+        if not u.startswith(GOOGLE_FONTS_PREFIX):
+            warn("brand.font_links: \"%s\" is not a %s address -> skipped" % (u[:70], GOOGLE_FONTS_PREFIX))
+            continue
+        out.append('<link href="%s" rel="stylesheet">' % html.escape(u, quote=True))
+    return "\n".join(out)
+
+
+def build_brand(config, config_dir, out_dir, surface="pages"):
+    """The final palette of ONE surface ('pages' or 'deck').
+    brand.* is the shared palette; brand.deck.* and brand.deck_font override it on the deck,
+    so a design round may give the deck and the pages two different typefaces or palettes.
+    Every dropped value is reported - a participant never gets a silently default page."""
     brand = dict(DEFAULT_BRAND)
-    user = config.get("brand") or {}
-    if isinstance(user, dict):
-        for k, v in user.items():
-            if v in (None, ""):
+    user = config.get("brand") if isinstance(config.get("brand"), dict) else {}
+    deck_over = user.get("deck") if isinstance(user.get("deck"), dict) else {}
+
+    def absorb(items, prefix):
+        for k, v in items.items():
+            if k == "deck":
+                continue
+            if v in (None, "", [], {}):
                 continue
             # direction_name is documentation and may be Hebrew; a colour or a font may not
             if k != "direction_name" and isinstance(v, str) and HEBREW.search(v):
+                warn("%s%s holds Hebrew text (\"%s\") -> ignored, the built-in default \"%s\" was used instead. "
+                     "Colours are HEX (#RRGGBB), radius is a CSS length, font is a Google Fonts name in latin letters"
+                     % (prefix, k, str(v)[:40], DEFAULT_BRAND.get(k, "")), block=False)
                 continue
             brand[k] = v
+
+    absorb(user, "brand.")
+    if surface == "deck":
+        absorb({k: v for k, v in deck_over.items() if k in SURFACE_TOKENS}, "brand.deck.")
+        for k in deck_over:
+            if k not in SURFACE_TOKENS:
+                warn("brand.deck.%s is not a surface token -> ignored (allowed: %s)" % (k, ", ".join(SURFACE_TOKENS)))
+        if user.get("deck_font"):
+            brand["font"] = user["deck_font"]
+        extra = clean_css((deck_over or {}).get("extra_css"), "brand.deck.extra_css") if deck_over.get("extra_css") else ""
+        shared = clean_css(user.get("extra_css"), "brand.extra_css")
+        brand["extra_css"] = ("%s\n%s" % (shared, extra)).strip() if extra else shared
+    else:
+        brand["extra_css"] = clean_css(user.get("extra_css"), "brand.extra_css")
+
+    brand["font"] = font_family(brand.get("font"), "brand.deck_font" if surface == "deck" else "brand.font")
     brand["accent_rgb"] = hex_to_rgb(brand["accent"])
-    # text colour on top of the accent button: whichever of the two reads better on this accent
-    if not brand.get("on_accent"):
-        dark, light = "#17120A", "#FFFFFF"
+    brand["accent_2_rgb"] = hex_to_rgb(brand["accent_2"])
+    # text colour on top of the accent button, derived per surface: a deck with its own
+    # accent gets its own --on-accent, never the one computed from the page accent
+    dark, light = "#17120A", "#FFFFFF"
+    forced = user.get("on_accent") if surface != "deck" else (deck_over.get("on_accent") or user.get("on_accent"))
+    if forced and not HEBREW.search(str(forced)):
+        brand["on_accent"] = forced
+    else:
         brand["on_accent"] = dark if contrast(dark, brand["accent"]) >= contrast(light, brand["accent"]) else light
-    # the Google Fonts <link> in all four templates: "Noto Sans Hebrew" -> "Noto+Sans+Hebrew"
+    # the Google Fonts <link> block of this surface: "Noto Sans Hebrew" -> "Noto+Sans+Hebrew"
     brand["font_query"] = "+".join(str(brand["font"]).split())
-    brand["logo"] = resolve_asset(brand.get("logo"), config_dir, out_dir)
-    brand["extra_css"] = str(brand.get("extra_css") or "")
-    check_contrast(brand)
+    brand["font_links"] = font_links_html([brand["font"]], user.get("font_links"))
+    brand["logo"] = resolve_asset(brand.get("logo"), config_dir, out_dir, "brand.logo")
     return brand
 
 
-def base_context(config, config_dir, out_dir):
+def audit_palettes(config, config_dir, out_dir):
+    """AA gate, per surface. The page palette and the deck palette are built and measured
+    separately, so a deck direction with its own accent is never judged by the page's numbers."""
+    pages = build_brand(config, config_dir, out_dir, "pages")
+    deck = build_brand(config, config_dir, out_dir, "deck")
+    keys = ("bg", "surface", "ink", "muted", "accent", "accent_2", "on_accent")
+    if all(pages.get(k) == deck.get(k) for k in keys):
+        check_contrast(pages)
+    else:
+        check_contrast(pages, "pages")
+        check_contrast(deck, "deck")
+
+
+def base_context(config, config_dir, out_dir, surface="pages"):
     ctx = dict(config)
     slug = str(config.get("slug") or "").strip()
     if not slug or HEBREW.search(slug):
@@ -310,7 +427,7 @@ def base_context(config, config_dir, out_dir):
               "og_image", "capture_endpoint", "form_action"):
         ctx[k] = url_or_empty(ctx.get(k))
     ctx["contact_line"] = str(ctx.get("contact_line") or "").strip()
-    ctx["brand"] = build_brand(config, config_dir, out_dir)
+    ctx["brand"] = build_brand(config, config_dir, out_dir, surface)
     return ctx
 
 
@@ -351,8 +468,8 @@ def pages_context(config, copy, config_dir, out_dir):
     }
 
     # photos (optional): URL as is, local file copied next to index.html
-    ctx["hero_photo"] = resolve_asset(ctx.get("hero_photo"), config_dir, out_dir)
-    ctx["host_photo"] = resolve_asset(ctx.get("host_photo"), config_dir, out_dir)
+    ctx["hero_photo"] = resolve_asset(ctx.get("hero_photo"), config_dir, out_dir, "hero_photo")
+    ctx["host_photo"] = resolve_asset(ctx.get("host_photo"), config_dir, out_dir, "host_photo")
     ctx["host_photo_class"] = "has-photo" if ctx["host_photo"] else ""
 
     # numbered gains
@@ -401,7 +518,7 @@ def render_creatives(ctx, out_dir, config_dir):
         return []
     cdir = out_dir / "landing" / "creatives"
     cdir.mkdir(parents=True, exist_ok=True)
-    ctx["creative_photo"] = resolve_asset(ctx.get("creative_photo"), config_dir, cdir)
+    ctx["creative_photo"] = resolve_asset(ctx.get("creative_photo"), config_dir, cdir, "creative_photo")
     written = []
     for i, item in enumerate(items):
         if not isinstance(item, dict):
@@ -554,7 +671,8 @@ def check_acts(slides, acts_seen):
 
 
 def render_deck(config, deck, config_dir, out_dir, preview=None):
-    ctx = base_context(config, config_dir, out_dir)
+    # the deck is its own surface: brand.deck / brand.deck_font may change its palette and typeface
+    ctx = base_context(config, config_dir, out_dir, "deck")
     ctx["deck"] = {"title": deck.get("title") or ctx["project_name"]}
     slides = deck.get("slides") or []
     if not slides:
@@ -609,10 +727,143 @@ def render_deck(config, deck, config_dir, out_dir, preview=None):
     return [deck_out, script_out], len(slides), round(mins)
 
 
+# ---------------------------------------------------------------- step 8: the spread gate
+# Three directions must be three different products, not three shades of one idea.
+# Measured, never eyeballed: --spread prints the numbers and fails when they are too close.
+FAMILY_HUE_MIN = 25.0   # two colours are two hue families only this far apart or more
+ACCENT_RGB_MIN = 50.0   # near-identity guard on the accents (or FAMILY_HUE_MIN degrees)
+BG_RGB_MIN = 20.0       # near-identity guard on the near-black backgrounds
+AXES_MIN = 2            # how many of the 4 axes must really differ in every pair
+NEUTRAL_SAT = 0.12      # below this an accent / a background counts as neutral (grey)
+
+HUE_FAMILIES = ((20, "כתום"), (46, "ענבר"), (70, "צהוב"), (160, "ירוק"), (200, "טורקיז"),
+                (250, "כחול"), (290, "סגול"), (345, "ורוד"))
+
+
+def hsv(value):
+    """(hue 0-360, saturation 0-1, value 0-1) of a hex colour."""
+    r, g, b = [c / 255.0 for c in rgb_triplet(value, (0, 0, 0))]
+    mx, mn = max(r, g, b), min(r, g, b)
+    d = mx - mn
+    if d == 0:
+        h = 0.0
+    elif mx == r:
+        h = (60 * ((g - b) / d)) % 360
+    elif mx == g:
+        h = 60 * ((b - r) / d) + 120
+    else:
+        h = 60 * ((r - g) / d) + 240
+    return h, (0.0 if mx == 0 else d / mx), mx
+
+
+def hue_family(value):
+    h, s, _v = hsv(value)
+    if s < NEUTRAL_SAT:
+        return "ניטרלי"
+    for edge, name in HUE_FAMILIES:
+        if h < edge:
+            return name
+    return "אדום"
+
+
+def hue_gap(a, b):
+    """Circular distance in degrees (0-180) between the hues of two colours."""
+    ha, sa, _ = hsv(a)
+    hb, sb, _ = hsv(b)
+    if sa < NEUTRAL_SAT or sb < NEUTRAL_SAT:
+        return 180.0 if (sa < NEUTRAL_SAT) != (sb < NEUTRAL_SAT) else 0.0
+    d = abs(ha - hb) % 360
+    return min(d, 360 - d)
+
+
+def rgb_distance(a, b):
+    ra, rb = rgb_triplet(a, (0, 0, 0)), rgb_triplet(b, (0, 0, 0))
+    return sum((x - y) ** 2 for x, y in zip(ra, rb)) ** 0.5
+
+
+def corner_family(radius):
+    """Corner grammar: sharp / medium / soft, from the radius token."""
+    m = re.match(r"\s*(\d+(?:\.\d+)?)", str(radius or ""))
+    n = float(m.group(1)) if m else 18.0
+    return "חד" if n <= 8 else ("מתון" if n <= 18 else "רך")
+
+
+def direction_summary(data):
+    d = data.get("brand") if isinstance(data.get("brand"), dict) else data
+    deck = d.get("deck") if isinstance(d.get("deck"), dict) else {}
+    return {
+        "name": str(d.get("direction_name") or "?"),
+        "bg": d.get("bg") or DEFAULT_BRAND["bg"],
+        "accent": d.get("accent") or DEFAULT_BRAND["accent"],
+        "radius": d.get("radius") or DEFAULT_BRAND["radius"],
+        "font": str(d.get("font") or DEFAULT_BRAND["font"]),
+        "deck_font": str(d.get("deck_font") or deck.get("font") or d.get("font") or DEFAULT_BRAND["font"]),
+    }
+
+
+def check_spread(files):
+    """Compares 2 or more design directions. Prints the measured distance of every pair and
+    fails (exit 1) when two of them are too close to be two different products."""
+    dirs = []
+    for f in files:
+        data = load_json(Path(f).resolve())
+        if not isinstance(data, dict):
+            sys.exit("x %s must contain a JSON object of brand tokens" % f)
+        s = direction_summary(data)
+        s["file"] = Path(f).name
+        dirs.append(s)
+    if len(dirs) < 2:
+        sys.exit("x --spread needs at least 2 direction files")
+    print("-> spread gate on %d directions" % len(dirs))
+    for s in dirs:
+        print("   %-14s %-22s bg %s (%s) · accent %s (%s) · %s · %s" % (
+            s["file"], s["name"], s["bg"], hue_family(s["bg"]), s["accent"],
+            hue_family(s["accent"]), s["font"], corner_family(s["radius"])))
+    bad = []
+    for i in range(len(dirs)):
+        for j in range(i + 1, len(dirs)):
+            a, b = dirs[i], dirs[j]
+            bg_gap, bg_dist = hue_gap(a["bg"], b["bg"]), rgb_distance(a["bg"], b["bg"])
+            ac_gap, ac_dist = hue_gap(a["accent"], b["accent"]), rgb_distance(a["accent"], b["accent"])
+            # tier 1, near-identity guard: two directions may never be the same colour twice
+            bg_ok = bg_gap >= FAMILY_HUE_MIN or bg_dist >= BG_RGB_MIN
+            ac_ok = ac_gap >= FAMILY_HUE_MIN or ac_dist >= ACCENT_RGB_MIN
+            # tier 2, the spread itself: at least 2 of the 4 axes really differ
+            axis_bg = hue_family(a["bg"]) != hue_family(b["bg"]) and bg_gap >= FAMILY_HUE_MIN
+            axis_ac = hue_family(a["accent"]) != hue_family(b["accent"]) and ac_gap >= FAMILY_HUE_MIN
+            axis_font = (a["font"].lower(), a["deck_font"].lower()) != (b["font"].lower(), b["deck_font"].lower())
+            axis_corner = corner_family(a["radius"]) != corner_family(b["radius"])
+            axes = sum([axis_bg, axis_ac, axis_font, axis_corner])
+            fails = []
+            if not bg_ok:
+                fails.append("backgrounds nearly identical: hue gap %.0f deg / rgb distance %.0f (needs %.0f deg or %.0f)"
+                             % (bg_gap, bg_dist, FAMILY_HUE_MIN, BG_RGB_MIN))
+            if not ac_ok:
+                fails.append("accents nearly identical: hue gap %.0f deg / rgb distance %.0f (needs %.0f deg or %.0f)"
+                             % (ac_gap, ac_dist, FAMILY_HUE_MIN, ACCENT_RGB_MIN))
+            if axes < AXES_MIN:
+                fails.append("only %d of 4 axes differ, needs %d (background hue family %s · accent hue family %s · typeface %s · corners %s)"
+                             % (axes, AXES_MIN, "+" if axis_bg else "-", "+" if axis_ac else "-",
+                                "+" if axis_font else "-", "+" if axis_corner else "-"))
+            head = "%s vs %s" % (a["file"], b["file"])
+            if fails:
+                bad.append(head)
+                print("x  %s -> %s" % (head, " · ".join(fails)))
+            else:
+                print("ok %s -> bg gap %.0f deg / dist %.0f · accent gap %.0f deg / dist %.0f · %d of 4 axes differ"
+                      % (head, bg_gap, bg_dist, ac_gap, ac_dist, axes))
+    sys.stdout.flush()
+    if bad:
+        print("x הכיוונים קרובים מדי (%s). בונים מחדש את הכיוון החורג ומריצים שוב, לפני שמראים משהו למשתמש/ת."
+              % ", ".join(bad), file=sys.stderr)
+        sys.exit(1)
+    print("0 חפיפות · הפיזור תקין")
+
+
 # ---------------------------------------------------------------- main
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--config", required=True, help="outputs/webinars/<slug>/config.json")
+    ap.add_argument("--config", help="outputs/webinars/<slug>/config.json")
     ap.add_argument("--copy", help="copy.json (default: next to config.json)")
     ap.add_argument("--deck", help="deck.json (default: next to config.json)")
     ap.add_argument("--out", help="output folder (default: the folder of config.json)")
@@ -622,7 +873,15 @@ def main():
                     help="step 8: render into <out>/previews/<kind>-NAME.html instead of the real files")
     ap.add_argument("--brand-json", metavar="FILE",
                     help="step 8: a JSON file with the tokens of one design direction (overrides config.brand)")
+    ap.add_argument("--spread", nargs="+", metavar="FILE",
+                    help="step 8: measure how far apart 2+ design directions are (no rendering)")
     args = ap.parse_args()
+
+    if args.spread:
+        check_spread(args.spread)
+        return
+    if not args.config:
+        sys.exit("x --config is required (or --spread with the direction files)")
 
     config_path = Path(args.config).resolve()
     config = load_json(config_path)
@@ -636,7 +895,11 @@ def main():
         if isinstance(bj, dict):
             tokens = bj.get("brand") if isinstance(bj.get("brand"), dict) else bj
             merged = dict(config.get("brand") or {})
-            merged.update({k: v for k, v in tokens.items() if not isinstance(v, (dict, list))})
+            for k, v in tokens.items():
+                # 'deck' (per-surface tokens) and 'font_links' are the only structured values
+                if isinstance(v, (dict, list)) and k not in ("deck", "font_links"):
+                    continue
+                merged[k] = v
             config["brand"] = merged
         else:
             sys.exit("x %s must contain a JSON object of brand tokens" % args.brand_json)
@@ -645,6 +908,10 @@ def main():
 
     copy_path = Path(args.copy).resolve() if args.copy else config_dir / "copy.json"
     deck_path = Path(args.deck).resolve() if args.deck else config_dir / "deck.json"
+
+    # AA gate, per surface: the page palette and the deck palette are measured separately,
+    # each with its own --on-accent, before anything is written
+    audit_palettes(config, config_dir, out_dir)
 
     label = config.get("project_name") or config.get("slug")
     if preview:

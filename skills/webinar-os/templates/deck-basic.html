@@ -22,9 +22,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{deck.title}}</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family={{brand.font_query}}:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+{{{brand.font_links}}}
 <style>
 /* ===== 1. מערכת העיצוב: 8 שורות, זהות בכל הקבצים ===== */
 :root{
@@ -40,7 +38,7 @@
 /* ===== נגזרות (לא נוגעים) ===== */
 :root{
   --on-accent:{{brand.on_accent}}; --line:rgba(255,255,255,.1); --line-2:rgba(255,255,255,.18);
-  --accent-rgb:{{brand.accent_rgb}}; --glow:rgba(var(--accent-rgb),.22); --grid:rgba(255,255,255,.045);
+  --accent-rgb:{{brand.accent_rgb}}; --accent-2-rgb:{{brand.accent_2_rgb}}; --glow:rgba(var(--accent-rgb),.22); --glow-2:rgba(var(--accent-2-rgb),.18); --grid:rgba(255,255,255,.045);
   --grad:linear-gradient(120deg,var(--accent),var(--accent-2));
   --stage:#000; --ease:cubic-bezier(.2,.7,.2,1);
 }
