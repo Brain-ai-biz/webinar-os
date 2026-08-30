@@ -3,9 +3,9 @@ name: webinar-os
 description: Build a complete LIVE webinar step by step, in Hebrew, with zero room for error - 9 numbered steps in a fixed order (research with verified facts, deck + presenter script, landing page, thank-you page, WhatsApp group, email + WhatsApp reminders with a send schedule, Zoom setup + pre-live checklist + post-webinar count, a design round with real previews, and publishing to a live URL). Everything comes out as files plus 1-2 minute manual instructions that work for everyone (Mac and Windows, no integrations needed). One unified dark design system across deck and pages until step 8, where the participant picks a direction of their own; step 9 ends with a live page. Resumable with "/webinar-os המשך". Use when the user says "/webinar-os", "תבנה לי וובינר", "בוא נבנה וובינר", "הפקת וובינר", "וובינר חי", "webinar", or wants to run a live online session with registration. Design (step 8) and publishing (step 9) are part of the base flow; only integrations, creatives, photos and the sales layer stay advanced (reference/advanced.md).
 ---
 
-# /webinar-os · וובינר חי ב-9 שלבים
+# /webinar-os · וובינר חי ב-10 שלבים
 
-זרימה אחת, קבועה, לכולם. 9 שלבים ממוספרים, באותו סדר ובאותם שמות (שלבים 1 עד 7 תואמים 1:1 לסדנה, לא משנים). כל שלב מסתיים בקבצים בתיקייה + הוראה ידנית של דקה-שתיים, ורק אז ממשיכים. שלבים 1 עד 7 בלי שאלת עיצוב אחת ובלי חיבורים; שלב 8 שואל על עיצוב **אחרי** שכבר יש מה לראות, ושלב 9 מסיים בכתובת חיה. מי שרוצה יותר: `reference/advanced.md` (חיבורים, קריאייטיבים, תמונות, שכבת מכירות), רק אם ביקשו.
+זרימה אחת, קבועה, לכולם. 10 שלבים ממוספרים, באותו סדר ובאותם שמות (שלבים 1 עד 7 תואמים 1:1 לסדנה, לא משנים). כל שלב מסתיים בקבצים בתיקייה + הוראה ידנית של דקה-שתיים, ורק אז ממשיכים. שלבים 1 עד 7 בלי שאלת עיצוב אחת ובלי חיבורים; שלב 8 שואל על עיצוב **אחרי** שכבר יש מה לראות, ושלב 9 מסיים בכתובת חיה. מי שרוצה יותר: `reference/advanced.md` (חיבורים, קריאייטיבים, תמונות, שכבת מכירות), רק אם ביקשו.
 
 ## דוקטרינה (לא מתפשרים)
 
@@ -31,6 +31,7 @@ description: Build a complete LIVE webinar step by step, in Hebrew, with zero ro
 | `reference/webinar-day.md` | שלב 7: זום, "התחלנו", צ'קליסט 10 דקות, `after.md` |
 | `reference/design-round.md` | שלב 8: 5 השאלות, איך בונים כיוון, 6 כיוונים מוכנים, תצוגות, שער AA |
 | `reference/publish.md` | שלב 9: 3 מסלולי העלאה, הטוקן, סקריפט הפריסה, הבדיקות החיות, דומיין |
+| `reference/creatives.md` | שלב 10: ערוצים, מפרט קופי לכל ערוץ, חוקי קריאייטיב, 8 כיוונים |
 | `reference/design-system.md` | מערכת העיצוב: 8 הטוקנים והדקדוק (רקע לשלב 8) |
 | `reference/advanced.md` | רק לבקשה: מיתוג, תמונות, חיבורים, קריאייטיבים, שאלות נוספות, שכבת מכירות |
 | `reference/troubleshoot.md` | כשמשהו נתקע |
@@ -47,7 +48,7 @@ description: Build a complete LIVE webinar step by step, in Hebrew, with zero ro
 3. **מצב:** אחרי כל שלב כותבים `outputs/webinars/<slug>/state.json`:
    `{"slug": "...", "project_name": "...", "completed": [1, 2], "deferred": [], "updated": "<ISO>"}`. `completed` גדל עד `[1,2,3,4,5,6,7,8,9]`.
    `deferred` = השלבים שביקשו במפורש לדחות (8 או 9 בלבד): לא נכנסים ל-`completed`, ומופיעים ב"מה נשאר לך לעשות" כ"נדחו, לא הושלמו". הושלמו אחר כך? עוברים מ-`deferred` ל-`completed`.
-   `updated` = זמן אמיתי מהשעון, בכל שלב מ-1 עד 9, לא זמן מומצא ולא חצות עגולה. מריצים ומדביקים את הפלט. בכלי Bash (כולל Git Bash ב-Windows): `date +%Y-%m-%dT%H:%M:%S%z`; רק בכלי PowerShell: `Get-Date -Format o`. הפיצול לפי הכלי, לא לפי מערכת ההפעלה.
+   `updated` = זמן אמיתי מהשעון, בכל שלב מ-1 עד 10, לא זמן מומצא ולא חצות עגולה. מריצים ומדביקים את הפלט. בכלי Bash (כולל Git Bash ב-Windows): `date +%Y-%m-%dT%H:%M:%S%z`; רק בכלי PowerShell: `Get-Date -Format o`. הפיצול לפי הכלי, לא לפי מערכת ההפעלה.
 4. **המשך:** `/webinar-os המשך` = מחפשים `outputs/webinars/*/state.json`; אחד = טוענים אותו, קוראים את `config.json`, מדפיסים "ממשיכים את <project_name> משלב N" ומתחילים את השלב הבא. כמה = שואלים איזה. אין = מתחילים מ-1.
 5. **לא מדלגים ולא מאחדים שלבים.** גם אם המשתמש/ת "יודע/ת מה הוא/היא רוצה", עוברים 1 → 9. חריג יחיד: **שלב 8 ושלב 9 אפשר לדחות במפורש** אם המשתמש/ת אומר/ת את זה ("העיצוב מספיק לי", "אעלה לבד אחר כך"). אז מסמנים אותם כנדחו, לא כהושלמו, והם מופיעים ב"מה נשאר לך לעשות". לא מציעים לדחות אותם ביוזמתנו.
 
@@ -203,6 +204,27 @@ description: Build a complete LIVE webinar step by step, in Hebrew, with zero ro
 
 ---
 
+---
+
+## שלב 10 · קריאייטיבים וקופי למודעות
+
+קוראים `reference/creatives.md`.
+
+הדף באוויר, ועכשיו צריך במה להביא אליו אנשים.
+
+**שפה, גם בצ'אט:** כמו בשלבים 8 ו-9.
+
+1. **ערוצים, שאלה אחת (AskUserQuestion, בחירה מרובה):** אינסטגרם סטורי (9:16) · פוסט לפייסבוק · הודעה לוואטסאפ · דיוור במייל · מודעה ממומנת. ברירת המחדל: הכל חוץ מהמודעה הממומנת.
+2. **המפתח, שואלים פעם אחת ולא חוסמים:** כדי לייצר את התמונות צריך מפתח של OpenAI מ-platform.openai.com בעמוד API keys. אומרים מיד: המפתח הוא סיסמה, נקרא מ-`--key`, ממשתנה הסביבה `OPENAI_API_KEY` או מ-`.env`, ולא נכתב לשום קובץ ולא מודפס חזרה. אין מפתח? הטקסטים נכתבים במלואם ורק התמונות מדולגות, וממשיכים. לא חוזרים על השאלה ולא עוצרים את השלב.
+3. **מסרים קודם, תמונות אחר כך. עצירת אישור מס' 4:** כותבים 4 עד 6 כיווני מסר ממוספרים (שורת זווית ושורת פאנץ' לכל אחד), מבוססים על `research.md`, `copy.json` והקול, ומבקשים לבחור 2 עד 3. לא כותבים אף פוסט מלא לפני שנבחרו.
+4. **הפוסטים המלאים** לכל ערוץ שנבחר, לפי מפרט הערוצים ב-`creatives.md` §3 (סטורי: שורה אחת על התמונה וכיתוב ב-3 עד 4 מקטעים · פייסבוק ווואטסאפ: 800 עד 900 תווים · דיוור: 800 עד 1200 תווים, נושא עד 50 תווים ושורת תצוגה מקדימה · ממומנת: עד כ-125 תווים לפני הקיפול וכותרת עד 40). ניסוח אחד ויחיד לקריאה לפעולה, ומספר רק עם מקור מ-`research.md`.
+5. **קריאייטיבים:** כותבים `outputs/webinars/<slug>/creatives.json` (מזהה, כיוון, `prompt` באנגלית, `size`, `punch`, `subline`) לפי 8 הכיוונים ב-`creatives.md` §4, ומריצים `python3 <skill-dir>/scripts/gen_creatives.py --config outputs/webinars/<slug>/config.json --key <המפתח>`. **התמונה נוצרת בלי טקסט**, והשורה העברית מולבשת מעליה עם `render_pages.py --creatives` ואז `screenshot.py`, בטוקנים של כיוון העיצוב משלב 8. אין מפתח? מדלגים על הסעיף הזה בלבד.
+6. **בדיקה בעיניים על כל תמונה לפני מסירה** (`creatives.md` §6): נושאת את המסר · שורת טקסט אחת לכל היותר וכתובה נכון · אין בה מוח, רשת נוירונים, לוח מעגלים, גרדיאנט סגול זוהר, הולוגרמה או רובוט. נכשלה? מדייקים את ה-`prompt` ומריצים שוב `--only <id>` בלבד.
+7. **מסירה:** `ads.md` עם כל הטקסטים, כל אחד בבלוק העתקה מסומן בערוץ ובכיוון, ואחריו טבלה של שורה לכל ערוץ: מה הולך לאן ועם איזה קריאייטיב.
+
+`✅ שלב 10 הושלם: N טקסטים ב-M ערוצים · K קריאייטיבים (או "בלי תמונות, אין מפתח") · קבצים: ads.md, creatives.json, creatives/. סיימנו.`
+
+
 ## הפלט הסופי
 
 אחרי שלב 9 מדפיסים את עץ התיקייה ואת הטבלה, ומסיימים בשורת "מה נשאר לך לעשות" (רק מה שנדחה: לינק קבוצה, לינק זום, מדיניות פרטיות, ושלב 8 או 9 אם המשתמש/ת דחה/תה אותם במפורש). שלב שנדחה מסומן בטבלה **"נדחה, לא הושלם"** ומופיע ב-`state.json` תחת `deferred`, לא תחת `completed`.
@@ -235,6 +257,7 @@ outputs/webinars/<slug>/
 | 7 | הוובינר | ✅ | `webinar-day.md`, `after.md` |
 | 8 | עיצוב מותאם | ✅ | `config.brand` + `deck.html` ו-`landing/` מרונדרים מחדש |
 | 9 | העלאה לאוויר | ✅ | `config.page_url` (הכתובת החיה) + `config.netlify_site_id` |
+| 10 | קריאייטיבים וקופי למודעות | ✅ | `ads.md`, `creatives/` |
 
 שלב שנדחה מקבל בעמודה האמצעית **נדחה, לא הושלם** במקום ✅.
 
@@ -242,7 +265,7 @@ outputs/webinars/<slug>/
 
 ## כללי ברזל
 
-- 9 שלבים, סדר קבוע, שמות קבועים, "ממשיכים?" אחרי כל אחד. שלבים 8 ו-9 נדחים רק אם ביקשו במפורש, לא מציעים את זה ביוזמתנו, והם נרשמים ב-`state.json` תחת `deferred`.
+- 10 שלבים, סדר קבוע, שמות קבועים, "ממשיכים?" אחרי כל אחד. שלבים 8 ו-9 נדחים רק אם ביקשו במפורש, לא מציעים את זה ביוזמתנו, והם נרשמים ב-`state.json` תחת `deferred`.
 - כללי השפה (עברית, דו-מגדרי יחיד/ה, בלי קו מפריד ארוך, בלי מילה לועזית בתחילת שורה) חלים גם על הצ'אט, בכל שלב, עד השורה האחרונה.
 - לא מציפים לשוניות: פותחים רק את הקבצים שהשלב הנוכחי ייצר.
 - לא ממציאים נתונים. לא מנסחים מדיניות פרטיות. לא מוחקים את תיבת ההסכמה.
