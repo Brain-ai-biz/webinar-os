@@ -10,6 +10,10 @@ Usage (Windows: python instead of python3):
     python3 render_pages.py --config ... --only pages      landing + thank-you only
     python3 render_pages.py --config ... --only deck       deck.html + script.md only
     python3 render_pages.py --config ... --creatives       also render copy.creatives (advanced)
+    python3 render_pages.py --config ... --preview a --brand-json dir-a.json
+        step 8 (design round): renders a throwaway copy with the tokens of one design
+        direction into <out>/previews/landing-a.html + thank-you-a.html + deck-a.html.
+        The real files are never touched, and script.md is not rewritten.
 
 Inputs (next to config.json unless overridden):
     config.json   facts: slug, project_name, business_name, date_he, time, event_iso, group_link, ...
@@ -71,7 +75,13 @@ DEFAULT_BRAND = {
     "radius": "18px",
     "font": "Heebo",
     "logo": "",
+    "direction_name": "",   # step 8: the name of the chosen design direction (documentation)
+    "extra_css": "",        # step 8: 2-3 grammar tweak lines, injected at the end of the <style>
 }
+
+# WCAG AA floors checked on every render (step 8 must verify, never assume)
+AA_TEXT = 4.5
+AA_LARGE = 3.0
 
 WORDS_PER_SEC = 2.5
 
@@ -193,6 +203,45 @@ def hex_to_rgb(value):
         return "245,181,74"
 
 
+def rgb_triplet(value, default=(245, 181, 74)):
+    v = str(value or "").strip().lstrip("#")
+    if len(v) == 3:
+        v = "".join(ch * 2 for ch in v)
+    if len(v) != 6:
+        return default
+    try:
+        return (int(v[0:2], 16), int(v[2:4], 16), int(v[4:6], 16))
+    except ValueError:
+        return default
+
+
+def luminance(value):
+    """WCAG relative luminance of a hex colour (0 = black, 1 = white)."""
+    out = []
+    for ch in rgb_triplet(value):
+        c = ch / 255.0
+        out.append(c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4)
+    return 0.2126 * out[0] + 0.7152 * out[1] + 0.0722 * out[2]
+
+
+def contrast(a, b):
+    """WCAG contrast ratio between two hex colours (1.0 to 21.0)."""
+    la, lb = luminance(a), luminance(b)
+    hi, lo = max(la, lb), min(la, lb)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def check_contrast(brand):
+    """AA gate on the token block. Any custom palette is measured, never assumed."""
+    pairs = [("ink", "bg", AA_TEXT), ("muted", "bg", AA_TEXT),
+             ("on_accent", "accent", AA_TEXT), ("accent", "bg", AA_LARGE),
+             ("ink", "surface", AA_TEXT)]
+    for fg, bg, floor in pairs:
+        ratio = contrast(brand.get(fg), brand.get(bg))
+        if ratio < floor:
+            warn("contrast %s on %s is %.1f:1 (needs %.1f:1) -> pick a different colour" % (fg, bg, ratio, floor))
+
+
 def url_or_empty(value):
     """A URL field still holding Hebrew placeholder text renders as empty."""
     v = str(value or "").strip()
@@ -222,12 +271,22 @@ def build_brand(config, config_dir, out_dir):
     user = config.get("brand") or {}
     if isinstance(user, dict):
         for k, v in user.items():
-            if v not in (None, "") and not (isinstance(v, str) and HEBREW.search(v)):
-                brand[k] = v
+            if v in (None, ""):
+                continue
+            # direction_name is documentation and may be Hebrew; a colour or a font may not
+            if k != "direction_name" and isinstance(v, str) and HEBREW.search(v):
+                continue
+            brand[k] = v
     brand["accent_rgb"] = hex_to_rgb(brand["accent"])
+    # text colour on top of the accent button: whichever of the two reads better on this accent
+    if not brand.get("on_accent"):
+        dark, light = "#17120A", "#FFFFFF"
+        brand["on_accent"] = dark if contrast(dark, brand["accent"]) >= contrast(light, brand["accent"]) else light
     # the Google Fonts <link> in all four templates: "Noto Sans Hebrew" -> "Noto+Sans+Hebrew"
     brand["font_query"] = "+".join(str(brand["font"]).split())
     brand["logo"] = resolve_asset(brand.get("logo"), config_dir, out_dir)
+    brand["extra_css"] = str(brand.get("extra_css") or "")
+    check_contrast(brand)
     return brand
 
 
@@ -317,11 +376,17 @@ def pages_context(config, copy, config_dir, out_dir):
     return ctx
 
 
-def render_pages(ctx, out_dir):
-    landing_dir = out_dir / "landing"
-    ty_out = landing_dir / "thank-you" / "index.html"
-    ty_out.parent.mkdir(parents=True, exist_ok=True)
-    landing_out = landing_dir / "index.html"
+def render_pages(ctx, out_dir, preview=None):
+    if preview:
+        pdir = out_dir / "previews"
+        pdir.mkdir(parents=True, exist_ok=True)
+        landing_out = pdir / ("landing-%s.html" % preview)
+        ty_out = pdir / ("thank-you-%s.html" % preview)
+    else:
+        landing_dir = out_dir / "landing"
+        ty_out = landing_dir / "thank-you" / "index.html"
+        ty_out.parent.mkdir(parents=True, exist_ok=True)
+        landing_out = landing_dir / "index.html"
     write_utf8(landing_out, render((TEMPLATES / "landing.html").read_text(encoding="utf-8"), ctx))
     write_utf8(ty_out, render((TEMPLATES / "thank-you.html").read_text(encoding="utf-8"), ctx))
     return [landing_out, ty_out]
@@ -488,7 +553,7 @@ def check_acts(slides, acts_seen):
         warn("acts are out of order or split: %s (expected 1..14 in one pass)" % ", ".join(map(str, acts_seen)), block=True)
 
 
-def render_deck(config, deck, config_dir, out_dir):
+def render_deck(config, deck, config_dir, out_dir, preview=None):
     ctx = base_context(config, config_dir, out_dir)
     ctx["deck"] = {"title": deck.get("title") or ctx["project_name"]}
     slides = deck.get("slides") or []
@@ -496,8 +561,16 @@ def render_deck(config, deck, config_dir, out_dir):
         sys.exit("x deck.json has no slides")
     ctx["slides_html"] = "".join(slide_html(s, i + 1, ctx) for i, s in enumerate(slides))
     tpl = (TEMPLATES / "deck-basic.html").read_text(encoding="utf-8")
-    deck_out = out_dir / "deck.html"
+    if preview:
+        (out_dir / "previews").mkdir(parents=True, exist_ok=True)
+        deck_out = out_dir / "previews" / ("deck-%s.html" % preview)
+    else:
+        deck_out = out_dir / "deck.html"
     write_utf8(deck_out, render(tpl, ctx))
+
+    if preview:
+        # a design preview never rewrites script.md and never re-runs the content gates
+        return [deck_out], len(slides), 0
 
     # presenter script, timed at 2.5 words/sec (count words, never guess)
     lines = ["# תסריט הגשה · %s" % ctx["deck"]["title"], "",
@@ -545,18 +618,40 @@ def main():
     ap.add_argument("--out", help="output folder (default: the folder of config.json)")
     ap.add_argument("--only", choices=["pages", "deck"], help="render only the pages or only the deck")
     ap.add_argument("--creatives", action="store_true", help="also render copy.creatives (advanced)")
+    ap.add_argument("--preview", metavar="NAME",
+                    help="step 8: render into <out>/previews/<kind>-NAME.html instead of the real files")
+    ap.add_argument("--brand-json", metavar="FILE",
+                    help="step 8: a JSON file with the tokens of one design direction (overrides config.brand)")
     args = ap.parse_args()
 
     config_path = Path(args.config).resolve()
     config = load_json(config_path)
     config_dir = config_path.parent
+
+    preview = str(args.preview or "").strip() or None
+    if preview and not re.match(r"^[A-Za-z0-9._-]+$", preview):
+        sys.exit("x --preview accepts letters, digits, '.', '-' and '_' only (for example: a)")
+    if args.brand_json:
+        bj = load_json(Path(args.brand_json).resolve())
+        if isinstance(bj, dict):
+            tokens = bj.get("brand") if isinstance(bj.get("brand"), dict) else bj
+            merged = dict(config.get("brand") or {})
+            merged.update({k: v for k, v in tokens.items() if not isinstance(v, (dict, list))})
+            config["brand"] = merged
+        else:
+            sys.exit("x %s must contain a JSON object of brand tokens" % args.brand_json)
     out_dir = Path(args.out).resolve() if args.out else config_dir
     out_dir.mkdir(parents=True, exist_ok=True)
 
     copy_path = Path(args.copy).resolve() if args.copy else config_dir / "copy.json"
     deck_path = Path(args.deck).resolve() if args.deck else config_dir / "deck.json"
 
-    print("-> rendering '%s'" % (config.get("project_name") or config.get("slug")))
+    label = config.get("project_name") or config.get("slug")
+    if preview:
+        dname = str((config.get("brand") or {}).get("direction_name") or preview)
+        print("-> preview '%s' (design direction: %s)" % (label, dname))
+    else:
+        print("-> rendering '%s'" % label)
     outputs = []
 
     if args.only != "deck":
@@ -566,9 +661,9 @@ def main():
                 sys.exit("x %s not found" % copy_path)
             print("   (no copy.json yet -> pages skipped)")
         else:
-            ctx = pages_context(config, copy, config_dir, out_dir / "landing")
-            outputs += render_pages(ctx, out_dir)
-            if args.creatives:
+            ctx = pages_context(config, copy, config_dir, out_dir / ("previews" if preview else "landing"))
+            outputs += render_pages(ctx, out_dir, preview)
+            if args.creatives and not preview:
                 outputs += render_creatives(ctx, out_dir, config_dir)
             mode = ("JSON endpoint: " + ctx["capture_endpoint"]) if ctx["capture_endpoint"] else (
                 ("form POST: " + ctx["form_action"]) if ctx["form_action"] else "one button to the WhatsApp group (no form)")
@@ -581,9 +676,12 @@ def main():
                 sys.exit("x %s not found" % deck_path)
             print("   (no deck.json yet -> deck skipped)")
         else:
-            files, n, mins = render_deck(config, deck, config_dir, out_dir)
+            files, n, mins = render_deck(config, deck, config_dir, out_dir, preview)
             outputs += files
-            print("   deck: %d slides, ~%d minutes of speaking in script.md" % (n, mins))
+            if preview:
+                print("   deck preview: %d slides (script.md untouched)" % n)
+            else:
+                print("   deck: %d slides, ~%d minutes of speaking in script.md" % (n, mins))
 
     for p in outputs:
         print("ok %s  (%d KB)" % (p, max(1, p.stat().st_size // 1024)))
@@ -592,6 +690,8 @@ def main():
     # summary line: the step is done only when this reads "0 אזהרות"
     n_warn = len(_warned)
     print("%d אזהרות" % n_warn if n_warn else "0 אזהרות")
+    if preview:
+        return
     if _blocking:
         print("x %d deck warnings must be fixed (interaction / acts) before the step is done -> fix deck.json and render again" % len(_blocking), file=sys.stderr)
         sys.exit(1)

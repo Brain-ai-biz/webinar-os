@@ -1,9 +1,11 @@
 # מתקדם: מיתוג, תמונות, חיבורים, קריאייטיבים, שאלות נוספות, שכבת מכירות
 
-**מתי לטעון אותי:** רק כשהמשתמש/ת מבקש/ת משהו שמעבר לזרימת הבסיס (7 השלבים), או אחרי שהוובינר הראשון עלה. לא בזמן ריצת הבסיס. כל סעיף כאן עצמאי.
+**מתי לטעון אותי:** רק כשהמשתמש/ת מבקש/ת משהו שמעבר לזרימת הבסיס (9 השלבים), או אחרי שהוובינר הראשון עלה. לא בזמן ריצת הבסיס. כל סעיף כאן עצמאי.
+
+מה **אינו** כאן יותר, כי הוא נכנס לבסיס: בחירת צבעים, פונט ודקדוק עיצובי היא שלב 8 (`design-round.md`), וההעלאה לאוויר עם Netlify, הבדיקות החיות והדומיין הן שלב 9 (`publish.md`).
 
 ## תוכן עניינים
-1. מיתוג: צבעים, פונט, לוגו
+1. לוגו ופונט: מה שנשאר מעבר לשלב 8
 2. תמונות: מרצה, מסך ראשון, שיתוף
 3. קריאייטיבים לרשתות (`templates/creative.html`)
 4. שאלות נוספות בראיון (זווית, הצעה, מה מוכרים)
@@ -12,9 +14,13 @@
 7. שכבת מכירות
 8. כללים לכל הרחבה
 
-## 1. מיתוג
+## 1. לוגו ופונט: מה שנשאר מעבר לשלב 8
 
-`reference/design-system.md` §4. בקצרה: `config.brand` עם 8 מפתחות (`bg`, `surface`, `ink`, `muted`, `accent`, `accent_2`, `radius`, `font`) + `logo`. מריצים `render_pages.py`, וכל 4 הקבצים מתעדכנים. לא שואלים שאלות עיצוב מעבר לזה.
+8 הטוקנים, שינויי הדקדוק וסבב הכיוונים נעשים בשלב 8 (`design-round.md`), ולא כאן. מה שנשאר מתקדם:
+
+- **לוגו:** `config.brand.logo` = נתיב לקובץ ליד `config.json` (או כתובת URL). הקובץ מועתק לבד ליד הדף. רקע שקוף (PNG או SVG), גובה 80 פיקסלים ומעלה.
+- **רקע בהיר:** מערכת העיצוב כהה מטבעה. דף בהיר דורש התאמה ידנית של הקווים והצללים בקובץ שנוצר, ורינדור חוזר דורס אותה. מי שמבקש/ת: אומרים את זה בכנות לפני שמתחילים.
+- **פונט מקומי (לא מ-Google Fonts):** דורש `@font-face` בתבנית ואינו נתמך בבסיס.
 
 ## 2. תמונות
 
@@ -71,7 +77,7 @@
 | 2 | **Webhook / גיליון** (Make, Zapier, n8n, Apps Script, Worker משלך) | הנרשמים נוחתים איפה שרוצים, כ-JSON | כתובת POST | `config.capture_endpoint`. הדף שולח JSON: שם, טלפון, מייל, consent, consent_ts, utm_* |
 | 3 | **וואטסאפ API (Green API וכדומה)** + רוטטור | הקבוצה נוצרת לבד, 4 ההודעות נשלחות מתוזמנות, קבוצה 2 נפתחת ולינק מתחלף כשהראשונה מתמלאת | חשבון בתשלום עם מופע מחובר לטלפון; מפתחות ב-`.env` | סקריפט שליחה מתוזמן (launchd ב-Mac / Task Scheduler ב-Windows) שקורא `whatsapp.md` + `schedule.md`. **בלי API אין רוטטור אוטומטי** (אין דרך לדעת שהקבוצה מלאה) |
 | 4 | **Zoom API** | הוובינר נוצר לבד עם הלינק בקונפיג | Server-to-Server OAuth app: `ZOOM_ACCOUNT_ID`, `ZOOM_CLIENT_ID`, `ZOOM_CLIENT_SECRET` | POST `/users/me/webinars` עם `start_time` מ-`event_iso`, `timezone: Asia/Jerusalem`, `settings.auto_recording: cloud`, `practice_session: true`. פגישה: `/users/me/meetings` |
-| 5 | **פריסה אוטומטית** (Netlify API) | `landing/` עולה לאוויר בפקודה, לאותו אתר בכל פעם | טוקן חינמי: app.netlify.com/user/applications → New access token → `env_set.py NETLIFY_AUTH_TOKEN <token>` | `python3 <skill-dir>/scripts/deploy_netlify.py --config ... --dir outputs/webinars/<slug>/landing`. כותב `page_url` לקונפיג. דומיין משלך: Netlify → Domain management → Add custom domain |
+| 5 | **פריסה לאוויר** | הדף עולה לכתובת חיה | חשבון Netlify חינם | זה שלב 9 בבסיס: `publish.md` (מסלול א, טוקן אישי, `deploy_netlify.py`). כאן נשארו רק החלופות 5ב ו-5ג |
 | 5ב | Cloudflare Pages | אותו דבר, על Cloudflare | חשבון Cloudflare | Workers & Pages → Create → Pages → Upload assets → תיקיית `landing`. עם wrangler: `wrangler pages deploy landing --project-name <slug>` |
 | 5ג | וורדפרס | הדף בתוך האתר | עורך HTML | עמוד חדש → בלוק "HTML מותאם אישית" → כל תוכן `index.html`; תבנית "Blank/Canvas". דף תודה: עמוד נפרד, ומעדכנים `THANK_YOU_URL` בקובץ. Wix מגביל HTML: מעלים ב-Netlify ומקשרים |
 | 6 | **לינקים מקוצרים** (Dub, חינם) | לינק אחד לקבוצה ואחד לשידור שאפשר להחליף להם יעד בלי לשנות פרסומים (זה "הרוטטור הידני") | מפתח: app.dub.co → Settings → API Keys → `env_set.py DUB_API_KEY <key>` | `python3 <skill-dir>/scripts/dub_links.py --config ... create` → `<slug>-group`, `<slug>-live`. קבוצה התמלאה: `dub_links.py --config ... update group --url <קבוצה 2>`. בלי מפתח: app.dub.co בדפדפן, New link |

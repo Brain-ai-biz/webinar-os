@@ -39,7 +39,7 @@
 }
 /* ===== נגזרות (לא נוגעים) ===== */
 :root{
-  --on-accent:#17120A; --line:rgba(255,255,255,.1); --line-2:rgba(255,255,255,.18);
+  --on-accent:{{brand.on_accent}}; --line:rgba(255,255,255,.1); --line-2:rgba(255,255,255,.18);
   --accent-rgb:{{brand.accent_rgb}}; --glow:rgba(var(--accent-rgb),.22); --grid:rgba(255,255,255,.045);
   --grad:linear-gradient(120deg,var(--accent),var(--accent-2));
   --stage:#000; --ease:cubic-bezier(.2,.7,.2,1);
@@ -195,6 +195,8 @@ body.print #nav,body.print #counter,body.print #progress{display:none}
   *,*::before,*::after{transition:none!important;animation:none!important}
   .reveal{transform:none}
 }
+/* ===== שלב 8: 2-3 שורות דקדוק של כיוון העיצוב שנבחר (config.brand.extra_css) ===== */
+{{{brand.extra_css}}}
 </style>
 </head>
 <body>

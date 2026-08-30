@@ -28,14 +28,29 @@
 
   "group_link": "לינק ההזמנה לקבוצת הוואטסאפ (מתמלא בשלב 5)",
   "broadcast_link": "לינק הזום (מתמלא בשלב 7)",
-  "page_url": "כתובת הדף אחרי ההעלאה לאוויר (מתמלא כשמעלים)",
+  "page_url": "כתובת הדף החי (נכתבת לבד בשלב 9 על ידי deploy_netlify.py; אפשר גם למלא ביד)",
+  "netlify_site_id": "מזהה האתר ב-Netlify (נכתב לבד בשלב 9; קיים = הרצה חוזרת מעדכנת את אותו אתר)",
 
   "form_action": "https://docs.google.com/forms/d/e/XXXX/formResponse (ריק = כפתור לקבוצה במקום טופס)",
   "form_fields": { "name": "entry.XXXX", "phone": "entry.XXXX", "email": "entry.XXXX", "consent": "entry.XXXX" },
+  "lead_mode": "google-sheet (ברירת המחדל) | whatsapp-group | mailing-system. תיעוד בלבד: איפה הלידים נשמרים, לשורה של שלב 9. מצב הרינדור נגזר מ-form_action בלבד",
 
   "hero_photo": "",
   "host_photo": "",
   "og_image": "",
   "capture_endpoint": "",
-  "brand": {}
+
+  "brand": {
+    "direction_name": "שם כיוון העיצוב שנבחר בשלב 8 (תיעוד)",
+    "bg": "#0A0E1A",
+    "surface": "#131A2C",
+    "ink": "#F4F6FB",
+    "muted": "#9BA6C0",
+    "accent": "#F5B54A",
+    "accent_2": "#FF7A59",
+    "radius": "18px",
+    "font": "Heebo",
+    "extra_css": "2-3 שורות CSS של דקדוק הכיוון (שלב 8). ריק = ברירת המחדל",
+    "logo": ""
+  }
 }

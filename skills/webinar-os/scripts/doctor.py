@@ -27,9 +27,10 @@ REQUIRED = [
     "SKILL.md", "config.template.json",
     "templates/landing.html", "templates/thank-you.html", "templates/deck-basic.html",
     "templates/creative.html", "templates/consent-block.html",
-    "scripts/render_pages.py",
+    "scripts/render_pages.py", "scripts/deploy_netlify.py",
     "reference/research.md", "reference/deck-structure.md", "reference/copy-blocks.md",
     "reference/manual-paths.md", "reference/schedule.md", "reference/webinar-day.md",
+    "reference/design-round.md", "reference/publish.md",
     "reference/design-system.md", "reference/advanced.md",
 ]
 

@@ -37,7 +37,7 @@
 }
 /* ===== נגזרות (לא נוגעים) ===== */
 :root{
-  --on-accent:#17120A; --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
+  --on-accent:{{brand.on_accent}}; --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
   --accent-rgb:{{brand.accent_rgb}}; --glow:rgba(var(--accent-rgb),.22); --grid:rgba(255,255,255,.045);
   --s1:8px; --s2:16px; --s3:24px; --s4:40px; --s5:64px; --s6:96px;
   --max:1080px; --narrow:760px;
@@ -211,6 +211,8 @@ html.js .reveal.in{opacity:1;transform:none}
   .btn,.sticky,.card{transition:none}
   .scene .glow{animation:none}
 }
+/* ===== שלב 8: 2-3 שורות דקדוק של כיוון העיצוב שנבחר (config.brand.extra_css) ===== */
+{{{brand.extra_css}}}
 </style>
 </head>
 <body>

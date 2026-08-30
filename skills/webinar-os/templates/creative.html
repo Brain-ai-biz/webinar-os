@@ -23,7 +23,7 @@
   --radius:{{brand.radius}};
   --font:'{{brand.font}}',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
 }
-:root{--on-accent:#17120A;--line:rgba(255,255,255,.09);--accent-rgb:{{brand.accent_rgb}};--glow:rgba(var(--accent-rgb),.28);--grid:rgba(255,255,255,.05);--grad:linear-gradient(120deg,var(--accent),var(--accent-2))}
+:root{--on-accent:{{brand.on_accent}};--line:rgba(255,255,255,.09);--accent-rgb:{{brand.accent_rgb}};--glow:rgba(var(--accent-rgb),.28);--grid:rgba(255,255,255,.05);--grad:linear-gradient(120deg,var(--accent),var(--accent-2))}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{width:1080px;height:1080px;overflow:hidden;background:var(--bg);color:var(--ink);font-family:var(--font)}
 body.story{height:1920px}
@@ -53,6 +53,8 @@ body.story .stage{padding:140px 96px}
 body.story .punch{font-size:150px}
 body.story .punch.long{font-size:118px}
 body.story .inner{gap:44px}
+/* ===== שלב 8: 2-3 שורות דקדוק של כיוון העיצוב שנבחר (config.brand.extra_css) ===== */
+{{{brand.extra_css}}}
 </style>
 </head>
 <body class="{{creative_class}}">

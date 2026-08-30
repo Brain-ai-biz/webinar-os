@@ -28,7 +28,7 @@
   --font:'{{brand.font}}',system-ui,-apple-system,'Segoe UI',Arial,sans-serif;
 }
 :root{
-  --on-accent:#17120A; --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
+  --on-accent:{{brand.on_accent}}; --line:rgba(255,255,255,.09); --line-2:rgba(255,255,255,.16);
   --accent-rgb:{{brand.accent_rgb}}; --glow:rgba(var(--accent-rgb),.22); --grid:rgba(255,255,255,.045);
   --grad:linear-gradient(120deg,var(--accent),var(--accent-2));
 }
@@ -89,6 +89,8 @@ footer b{color:var(--ink)}
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
   .card{opacity:1}.progress .fill{width:90%}
 }
+/* ===== שלב 8: 2-3 שורות דקדוק של כיוון העיצוב שנבחר (config.brand.extra_css) ===== */
+{{{brand.extra_css}}}
 </style>
 </head>
 <body>
