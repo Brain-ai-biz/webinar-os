@@ -31,9 +31,10 @@
   "page_url": "כתובת הדף החי (נכתבת לבד בשלב 9 על ידי deploy_netlify.py; אפשר גם למלא ביד)",
   "netlify_site_id": "מזהה האתר ב-Netlify (נכתב לבד בשלב 9; קיים = הרצה חוזרת מעדכנת את אותו אתר)",
 
-  "form_action": "https://docs.google.com/forms/d/e/XXXX/formResponse (ריק = כפתור לקבוצה במקום טופס)",
+  "netlify_form": "webinar-register (ברירת המחדל: לכידה דרך Netlify Forms, בלי אף צעד ידני). ריק = נופלים ל-form_action",
+  "form_action": "מסלול חלופי: https://docs.google.com/forms/d/e/XXXX/formResponse (ריק גם כאן = כפתור לקבוצה במקום טופס)",
   "form_fields": { "name": "entry.XXXX", "phone": "entry.XXXX", "email": "entry.XXXX", "consent": "entry.XXXX" },
-  "lead_mode": "google-sheet (ברירת המחדל) | whatsapp-group | mailing-system. תיעוד בלבד: איפה הלידים נשמרים, לשורה של שלב 9. מצב הרינדור נגזר מ-form_action בלבד",
+  "lead_mode": "netlify-forms (ברירת המחדל) | google-sheet | whatsapp-group | mailing-system. תיעוד בלבד: איפה הלידים נשמרים, לשורה של שלב 9. מצב הרינדור נגזר מ-netlify_form ומ-form_action בלבד",
 
   "hero_photo": "",
   "host_photo": "",

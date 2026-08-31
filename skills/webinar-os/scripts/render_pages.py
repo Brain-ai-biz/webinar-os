@@ -32,6 +32,7 @@ Outputs (default: the folder of config.json):
     landing/creatives/<id>.html     only with --creatives
 
 Registration mode (decided automatically):
+    netlify_form (Netlify Forms, the default) -> styled form -> thank-you
     form_action (Google Form "formResponse" URL) or capture_endpoint -> styled form -> thank-you
     neither                                                          -> one button to group_link
 
@@ -109,6 +110,15 @@ ACT_NAMES = {
     14: "שאלות ותשובות + סיום",
 }
 CREATIVE_IDS = ["tomorrow", "tomorrow_time", "today", "one_hour", "live"]
+
+# the 8 slide patterns the deck template really renders (templates/deck-basic.html)
+DECK_PATTERNS = ["title", "section", "bullets", "three-columns", "big-stat", "quote", "screenshot", "cta"]
+# composition budget for a ~30 slide deck (reference/deck-structure.md section 2.5):
+# "title, bullet bullet bullet" all the way down is the failure mode, so it is measured, not eyeballed.
+BULLET_SHARE_MAX = 0.30   # at most 30% bullet slides (9 of 30)
+PATTERNS_MIN = 6          # at least 6 of the 8 patterns must appear
+PATTERN_RUN_MAX = 3       # at most 3 slides in a row share one pattern (act 5 needs exactly 3)
+
 
 _warned = set()
 _blocking = []  # deck warnings (interaction / acts) that must reach zero before the step is done
@@ -451,21 +461,39 @@ def pages_context(config, copy, config_dir, out_dir):
         form_action = ""
     ctx["capture_endpoint"] = endpoint
     ctx["form_action"] = form_action
-    ctx["mode_form"] = bool(endpoint or form_action)
-    ctx["mode_button"] = not ctx["mode_form"]
+    # netlify_form (config): Netlify Forms, the default path. The name is the form name that
+    # Netlify records at deploy time, so it stays plain ascii.
+    nf = str(ctx.get("netlify_form") or "").strip()
+    if nf:
+        safe = re.sub(r"[^A-Za-z0-9_-]+", "-", nf).strip("-")
+        if safe != nf:
+            warn("netlify_form '%s' has characters Netlify does not keep -> using '%s'"
+                 % (nf, safe or "webinar-register"))
+        nf = safe
+    ctx["netlify_form_name"] = nf or "webinar-register"
+    ctx["mode_netlify"] = bool(nf)
+    ctx["mode_form"] = bool(endpoint or form_action) and not ctx["mode_netlify"]
+    ctx["mode_button"] = not (ctx["mode_form"] or ctx["mode_netlify"])
+    ctx["mode_any_form"] = ctx["mode_form"] or ctx["mode_netlify"]
+    if ctx["mode_netlify"] and (endpoint or form_action):
+        warn("netlify_form is set -> capture_endpoint / form_action are ignored on the page")
     if ctx["mode_button"] and not ctx["group_link"]:
-        warn("no form_action AND no group_link -> the registration button has nowhere to point")
+        warn("no netlify_form, no form_action AND no group_link -> the registration button has nowhere to point")
     fields = ctx.get("form_fields") or {}
 
     def clean(k, default):
         v = str(fields.get(k) or "").strip()
         return default if (not v or HEBREW.search(v)) else v
-    ctx["form_fields"] = {
-        "name": clean("name", "first_name"),
-        "email": clean("email", "email"),
-        "phone": clean("phone", "phone"),
-        "consent": clean("consent", "consent"),
-    }
+    if ctx["mode_netlify"]:
+        # Netlify stores whatever the field is called, so the names stay human
+        ctx["form_fields"] = {"name": "name", "email": "email", "phone": "phone", "consent": "consent"}
+    else:
+        ctx["form_fields"] = {
+            "name": clean("name", "first_name"),
+            "email": clean("email", "email"),
+            "phone": clean("phone", "phone"),
+            "consent": clean("consent", "consent"),
+        }
 
     # photos (optional): URL as is, local file copied next to index.html
     ctx["hero_photo"] = resolve_asset(ctx.get("hero_photo"), config_dir, out_dir, "hero_photo")
@@ -670,6 +698,45 @@ def check_acts(slides, acts_seen):
         warn("acts are out of order or split: %s (expected 1..14 in one pass)" % ", ".join(map(str, acts_seen)), block=True)
 
 
+def pattern_runs(slides, run_max=PATTERN_RUN_MAX):
+    """Runs of consecutive slides sharing one pattern that are longer than run_max.
+    Returns (pattern, first, last, length) with 1-based slide numbers."""
+    out = []
+    start = 1
+    for i in range(1, len(slides) + 1):
+        cur = str(slides[i - 1].get("pattern") or "bullets")
+        nxt = str(slides[i].get("pattern") or "bullets") if i < len(slides) else None
+        if cur != nxt:
+            if i - start + 1 > run_max:
+                out.append((cur, start, i, i - start + 1))
+            start = i + 1
+    return out
+
+
+def check_composition(slides):
+    """The variety gate: a deck that is title + bullet + bullet + bullet all the way down
+    is boring to the eye, so the mix is measured. Warns (never fatal) and names the slides."""
+    n = len(slides)
+    if not n:
+        return
+    pats = [str(s.get("pattern") or "bullets") for s in slides]
+    bullets = [str(i) for i, pat in enumerate(pats, 1) if pat == "bullets"]
+    share = len(bullets) / float(n)
+    if share > BULLET_SHARE_MAX:
+        warn("הרכב המצגת: %d מתוך %d שקפים הם bullets (%d%%, התקרה %d%%) -> שקפים %s. "
+             "להמיר חלק מהם ל-three-columns / quote / section / screenshot ולרנדר שוב"
+             % (len(bullets), n, round(share * 100), round(BULLET_SHARE_MAX * 100), ", ".join(bullets)))
+    used = [p for p in DECK_PATTERNS if p in pats]
+    if len(used) < PATTERNS_MIN:
+        warn("הרכב המצגת: רק %d תבניות מתוך 8 בשימוש (%s), המינימום %d -> "
+             "להוסיף תבנית שלא הופיעה (%s) ולרנדר שוב"
+             % (len(used), ", ".join(used), PATTERNS_MIN,
+                ", ".join([p for p in DECK_PATTERNS if p not in pats]) or "אין"))
+    for pat, first, last, length in pattern_runs(slides):
+        warn("הרכב המצגת: %d שקפים רצופים בתבנית '%s' (שקפים %d-%d, מותר עד %d ברצף) -> "
+             "לשבור את הרצף בתבנית אחרת ולרנדר שוב" % (length, pat, first, last, PATTERN_RUN_MAX))
+
+
 def render_deck(config, deck, config_dir, out_dir, preview=None):
     # the deck is its own surface: brand.deck / brand.deck_font may change its palette and typeface
     ctx = base_context(config, config_dir, out_dir, "deck")
@@ -716,6 +783,8 @@ def render_deck(config, deck, config_dir, out_dir, preview=None):
         lines.append("")
     mins = total_words / WORDS_PER_SEC / 60
     check_acts(slides, acts_seen)
+    # variety gate: bullet share, how many of the 8 patterns are used, and repeats in a row
+    check_composition(slides)
     # interaction check: one [עצירה]/[צ'אט] every 5-7 slides, and one in the last 5
     for a, b in interaction_gaps(slides):
         warn("אין אינטראקציה בשקפים %d-%d (צריך [עצירה] או [צ'אט] כל 5-7 שקפים)" % (a, b), block=True)
@@ -932,8 +1001,14 @@ def main():
             outputs += render_pages(ctx, out_dir, preview)
             if args.creatives and not preview:
                 outputs += render_creatives(ctx, out_dir, config_dir)
-            mode = ("JSON endpoint: " + ctx["capture_endpoint"]) if ctx["capture_endpoint"] else (
-                ("form POST: " + ctx["form_action"]) if ctx["form_action"] else "one button to the WhatsApp group (no form)")
+            if ctx["mode_netlify"]:
+                mode = "Netlify Forms: " + ctx["netlify_form_name"]
+            elif ctx["capture_endpoint"]:
+                mode = "JSON endpoint: " + ctx["capture_endpoint"]
+            elif ctx["form_action"]:
+                mode = "form POST: " + ctx["form_action"]
+            else:
+                mode = "one button to the WhatsApp group (no form)"
             print("   registration: " + mode)
 
     if args.only != "pages":

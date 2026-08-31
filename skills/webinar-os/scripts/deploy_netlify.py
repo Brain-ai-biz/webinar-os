@@ -5,17 +5,26 @@ deploy_netlify.py - Webinar-OS step 9: puts the rendered landing folder live on 
 Zips landing/ in memory and POSTs it. No CLI, no Node, standard library only (urllib).
 Works on Windows / Mac / Linux, Python 3.9+.
 
-The token is a password. It is read from --token, from NETLIFY_AUTH_TOKEN (env or .env),
-or asked for at the prompt. It is never printed and never written to any file.
+The token is read from --token, from NETLIFY_AUTH_TOKEN (env or .env), or asked for at the
+prompt. Given on the command line it is saved once to the project .env (via env_set.py), so the
+next runs need no token. It is never printed back.
+
+Netlify Forms: a brand new site is created with form detection OFF
+(processing_settings.ignore_html_forms = true). With detection off the form on the page returns
+404 on submit and every registration is lost in silence, so right after creating the site this
+script turns detection on and deploys again. Nothing to click in the dashboard.
 
 Usage (Windows: python instead of python3):
     python3 deploy_netlify.py --config outputs/webinars/<slug>/config.json --token <token>
-        first run:  creates the site, deploys, writes config.netlify_site_id + config.page_url,
-                    re-renders the pages so the live address sits inside them, deploys once more.
+        first run:  creates the site, turns form detection on, deploys, writes
+                    config.netlify_site_id + config.page_url, re-renders the pages so the live
+                    address sits inside them, deploys once more.
         next runs:  redeploys the same folder to the same site (the address does not change).
     python3 deploy_netlify.py --config ... --token <token> --site-name my-webinar
     python3 deploy_netlify.py --config ... --dry-run     shows what would be sent, no token needed
     python3 deploy_netlify.py --token <token> --check    only checks that the token works
+    python3 deploy_netlify.py --config ... --submissions          the registrations, as a table
+    python3 deploy_netlify.py --config ... --submissions --spam   the ones Netlify quarantined
 """
 import argparse
 import io
@@ -72,8 +81,18 @@ def get_token(args):
     if not token:
         die("x חסר טוקן.",
             "  app.netlify.com ← User settings ← Applications ← Personal access tokens ← New access token,",
-            "  ואז מריצים שוב עם --token <הטוקן>. הטוקן הוא סיסמה: לא שומרים אותו בקובץ ולא שולחים אותו לאף אחד.")
+            "  ואז מריצים שוב עם --token <הטוקן>.")
+    if str(args.token or "").strip():
+        save_token(token)
     return token
+
+
+def save_token(token):
+    """Keep the token in the project .env, so the next runs need no --token.
+    One dry line, no lecture."""
+    r = subprocess.run([sys.executable, str(HERE / "env_set.py"), "NETLIFY_AUTH_TOKEN", token],
+                       capture_output=True, text=True)
+    print("ok נשמר ל-.env" if r.returncode == 0 else "   (הטוקן לא נשמר ל-.env, ההרצה ממשיכה)")
 
 
 def zip_dir(folder):
@@ -114,6 +133,59 @@ def deploy_zip(token, site_id, blob):
     wait_ready(token, d["id"])
 
 
+def enable_forms(token, site_id):
+    """Form detection is OFF on a new site (processing_settings.ignore_html_forms = true).
+    Left off, a submit on the page answers 404 and no lead is ever stored."""
+    s, r = http("PATCH", "%s/sites/%s" % (API, site_id), token,
+                {"processing_settings": {"html": {"pretty_urls": True}, "ignore_html_forms": False}},
+                timeout=30)
+    if s == 200:
+        print("ok זיהוי טפסים הופעל באתר")
+        return True
+    print("   לא הצלחתי להפעיל זיהוי טפסים (%s). ב-Netlify: Site configuration ← Forms ← Enable form detection" % s)
+    return False
+
+
+def show_submissions(token, site_id, spam=False):
+    """Step 9 and the follow-up: the registrations, straight from Netlify."""
+    s, forms = http("GET", "%s/sites/%s/forms" % (API, site_id), token, timeout=30)
+    if s != 200:
+        die(explain(s, forms))
+    names = [f.get("name") for f in forms] if isinstance(forms, list) else []
+    if not names:
+        print("   אין טופס מזוהה באתר הזה. אם הדף כבר באוויר עם טופס: מריצים שוב את ההעלאה,")
+        print("   היא מדליקה זיהוי טפסים ומעלה שוב, ואחר כך שולחים הרשמת בדיקה אחת.")
+        return
+    print("-> טפסים באתר: %s" % ", ".join(str(n) for n in names))
+    url = "%s/sites/%s/submissions?per_page=100" % (API, site_id)
+    if spam:
+        url += "&state=spam"
+    s, subs = http("GET", url, token, timeout=60)
+    if s != 200:
+        die(explain(s, subs))
+    if not isinstance(subs, list) or not subs:
+        print("   %s" % ("אין הרשמות בהסגר" if spam else "אין הרשמות עדיין"))
+        if not spam:
+            print("   ליד שנעלם? לפעמים Netlify מסמן הרשמה תקינה כספאם, ואז היא לא ברשימה הזו:")
+            print("   מריצים את אותה פקודה עם --spam")
+        return
+    print("-> %d הרשמות%s" % (len(subs), " בהסגר (ספאם)" if spam else ""))
+    rows = [("מתי", "שם", "טלפון", "מייל")]
+    for it in subs:
+        d = it.get("data") or {}
+        rows.append((str(it.get("created_at") or "")[:16].replace("T", " "),
+                     str(d.get("name") or d.get("first_name") or ""),
+                     str(d.get("phone") or ""),
+                     str(d.get("email") or "")))
+    w = [max(len(r[i]) for r in rows) for i in range(4)]
+    for i, r in enumerate(rows):
+        print("   " + "  ".join(r[j].ljust(w[j]) for j in range(4)))
+        if i == 0:
+            print("   " + "  ".join("-" * w[j] for j in range(4)))
+    if not spam:
+        print("   חסרה שורה שאת/ה בטוח/ה ששלחת? היא כנראה בהסגר: אותה פקודה עם --spam")
+
+
 def site_url(site):
     return (site.get("ssl_url") or site.get("url") or "").rstrip("/") + "/"
 
@@ -126,6 +198,8 @@ def main():
     ap.add_argument("--site-name", help="the name in <name>.netlify.app (default: config.slug)")
     ap.add_argument("--check", action="store_true", help="only check that the token works")
     ap.add_argument("--dry-run", action="store_true", help="show what would be sent, without a token and without uploading")
+    ap.add_argument("--submissions", action="store_true", help="list the registrations stored by Netlify Forms")
+    ap.add_argument("--spam", action="store_true", help="with --submissions: the quarantined ones instead")
     args = ap.parse_args()
 
     # ---------------------------------------------------------------- dry run
@@ -145,9 +219,9 @@ def main():
             print("   יעד: POST %s/sites/%s/deploys" % (API, site_id))
         else:
             print("   יעד: POST %s/sites  (יצירת אתר חדש בשם '%s')" % (API, name or "<slug>"))
-            print("        ואחריו PATCH %s/sites/<id>  עם השם" % API)
+            print("        ואחריו PATCH %s/sites/<id>  עם השם ועם הפעלת זיהוי טפסים" % API)
         print("   גוף הבקשה: application/zip, %d bytes, %d קבצים" % (len(blob), len(names)))
-        print("   כותרת: Authorization: Bearer <token> (הטוקן לא מודפס ולא נשמר)")
+        print("   כותרת: Authorization: Bearer <token> (הטוקן לא מודפס)")
         for n in names:
             print("     - %s" % n)
         print("   אחרי הפריסה ייכתבו לקונפיג: netlify_site_id, page_url")
@@ -163,6 +237,15 @@ def main():
         return
     if not args.config:
         ap.error("--config required")
+
+    # ---------------------------------------------------------------- the registrations
+    if args.submissions:
+        cfg = load_json(Path(args.config).resolve())
+        sid = str(cfg.get("netlify_site_id") or "").strip()
+        if not sid:
+            die("x אין netlify_site_id בקונפיג. מעלים קודם את הדף לאוויר.")
+        show_submissions(token, sid, args.spam)
+        return
 
     # ---------------------------------------------------------------- inputs
     cfg_path = Path(args.config).resolve()
@@ -189,6 +272,8 @@ def main():
         if s not in (200, 201) or not isinstance(site, dict) or "id" not in site:
             die(explain(s, site))
         site_id = site["id"]
+        # detection is off on a new site; turning it on now, before anyone can register
+        forms_on = enable_forms(token, site_id)
         if wanted:
             for name in (wanted, wanted + "-webinar", wanted + "-live"):
                 s2, r = http("PATCH", "%s/sites/%s" % (API, site_id), token, {"name": name}, timeout=30)
@@ -202,6 +287,9 @@ def main():
             wait_ready(token, deploy_id)
         else:
             time.sleep(5)
+        if forms_on:
+            # the first deploy was zipped before detection was on, so the form is not registered yet
+            deploy_zip(token, site_id, blob)
 
     url = site_url(site)
 
@@ -224,7 +312,8 @@ def main():
 
     print("ok הדף באוויר: %s" % url)
     print("ok דף התודה: %sthank-you/" % url)
-    print("ok נשמרו בקונפיג: netlify_site_id, page_url (הטוקן לא נשמר בשום מקום)")
+    print("ok נשמרו בקונפיג: netlify_site_id, page_url")
+    print("   הנרשמים: python3 %s --config %s --submissions" % (Path(__file__).name, cfg_path))
     print("   עדכון אחרי שינוי: מרנדרים שוב ומריצים בדיוק את אותה פקודה.")
 
 

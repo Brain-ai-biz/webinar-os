@@ -319,7 +319,13 @@ html.js .reveal.in{opacity:1;transform:none}
       <h2>{{form.title}}</h2>
       <p class="sub" style="margin-inline:auto">{{form.sub}}</p>
     </div>
-    {{#if mode_form}}<form class="form-card" id="lead-form" novalidate method="post" action="{{form_action}}">
+    {{#if mode_netlify}}<!-- Netlify Forms: השדות נקלטים בזכות data-netlify, והשדה form-name הוא מה שמקשר את השליחה לטופס -->
+    <form class="form-card" id="lead-form" novalidate method="POST"
+      name="{{netlify_form_name}}" data-netlify="true"
+      data-netlify-honeypot="company" action="thank-you/">
+      <input type="hidden" name="form-name" value="{{netlify_form_name}}">{{/if}}
+    {{#if mode_form}}<form class="form-card" id="lead-form" novalidate method="post" action="{{form_action}}">{{/if}}
+    {{#if mode_any_form}}
       <div class="field">
         <label for="f-name">שם פרטי</label>
         <input id="f-name" name="{{form_fields.name}}" type="text" autocomplete="given-name" required>
@@ -387,8 +393,11 @@ html.js .reveal.in{opacity:1;transform:none}
 <script>
 var CONFIG = {
   EVENT_DATE: "{{event_iso}}",
-  FORM_ACTION: "{{form_action}}",          /* Google Form (formResponse) או טופס מערכת דיוור */
-  CAPTURE_ENDPOINT: "{{capture_endpoint}}",/* מתקדם: endpoint שמקבל JSON */
+{{#if mode_netlify}}  NETLIFY: true,
+  FORM_ACTION: "/",                        /* Netlify Forms: שולחים לכתובת של הדף עצמו */
+  CAPTURE_ENDPOINT: "",{{/if}}{{#if mode_form}}  FORM_ACTION: "{{form_action}}",          /* Google Form (formResponse) או טופס מערכת דיוור */
+  CAPTURE_ENDPOINT: "{{capture_endpoint}}",/* מתקדם: endpoint שמקבל JSON */{{/if}}{{#if mode_button}}  FORM_ACTION: "",
+  CAPTURE_ENDPOINT: "",{{/if}}
   THANK_YOU_URL: location.protocol==="file:" ? "thank-you/index.html" : "thank-you/", /* מקומית (file://) אין index.html ברירת מחדל, אז מפנים לקובץ עצמו */
   SLUG: "{{slug}}"
 };
@@ -457,6 +466,14 @@ var CONFIG = {
     var fd=new FormData(form), data={}; fd.forEach(function(v,k){data[k]=v}); data.consent=true; data.slug=CONFIG.SLUG;
     function go(){ try{localStorage.setItem("wos_lead",JSON.stringify(data))}catch(e){} location.href=CONFIG.THANK_YOU_URL; }
     function fail(){ btn.disabled=false; btn.textContent=old; msg.textContent="משהו השתבש בשליחה. אפשר לנסות שוב בעוד רגע."; }
+    if(CONFIG.NETLIFY){
+      /* Netlify Forms: שליחה רגילה של טופס לכתובת הדף. קוראים את התשובה, כדי שכשל יופיע ככשל ולא כ"תודה" */
+      fetch(CONFIG.FORM_ACTION,{method:"POST",
+        headers:{"Content-Type":"application/x-www-form-urlencoded"},
+        body:new URLSearchParams(fd).toString()})
+        .then(function(r){ if(!r.ok) throw new Error(r.status); go(); }).catch(fail);
+      return;
+    }
     if(CONFIG.CAPTURE_ENDPOINT){
       fetch(CONFIG.CAPTURE_ENDPOINT,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(data)})
         .then(function(r){ if(!r.ok) throw new Error(r.status); go(); }).catch(fail);
